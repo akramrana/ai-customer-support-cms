@@ -13,6 +13,8 @@ import { finalize, Observable } from 'rxjs';
 
 import { AiMode, AiSchedule, BusinessAiSettingsService } from './business-ai-settings.service';
 
+import { DeliverySettingsSection } from './delivery-settings';
+
 const defaultTimezone = 'Asia/Dhaka';
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
@@ -40,7 +42,7 @@ function errorDetail(error: unknown): string {
 @Component({
   imports: [
     ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule,
-    MatProgressBarModule, MatRadioModule, MatSlideToggleModule,
+    MatProgressBarModule, MatRadioModule, MatSlideToggleModule, DeliverySettingsSection,
   ],
   templateUrl: './business-ai-settings.html',
   styleUrl: './business-ai-settings.scss',

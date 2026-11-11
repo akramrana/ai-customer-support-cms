@@ -73,6 +73,12 @@ function chatPage<T>(items: T[], page: number, total: number) {
   return { items, page, pageSize: 20, total };
 }
 
+const deliveryUrl = '/api/business/delivery-settings';
+const deliveryFixture = {
+  currency: 'BDT', insideDhakaFee: '50.00', outsideDhakaFee: '100.00',
+  insideDhakaDeliveryDays: '1–2 days', outsideDhakaDeliveryDays: '3–4 days',
+};
+
 describe('CMS authentication', () => {
   let http: HttpTestingController;
   let auth: AuthService;
@@ -228,6 +234,7 @@ describe('CMS authentication', () => {
   it('loads both AI resources and saves mode changes without writing or clearing schedules', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.expectOne(deliveryUrl).flush(deliveryFixture);
     const page = harness.routeNativeElement!;
     expect(page.textContent).toContain('Loading AI settings');
     http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'Asia/Dhaka' });
@@ -267,6 +274,7 @@ describe('CMS authentication', () => {
   it('validates intervals and keeps the schedule draft after a separate save fails', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.expectOne(deliveryUrl).flush(deliveryFixture);
     const page = harness.routeNativeElement!;
     http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'UTC' });
     http.expectOne('/api/business/ai-schedules').flush({ schedules: [] });
@@ -335,13 +343,14 @@ describe('CMS authentication', () => {
   it('keeps write controls hidden when the initial schedule load fails', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.expectOne(deliveryUrl).flush(deliveryFixture);
     http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'Asia/Dhaka' });
     http.expectOne('/api/business/ai-schedules').flush({ error: 'Unavailable' }, {
       status: 500, statusText: 'Internal Server Error',
     });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Unable to load AI settings and schedules.');
-    expect(harness.routeNativeElement?.querySelector('form')).toBeNull();
+    expect(harness.routeNativeElement?.querySelector('form:not([aria-labelledby=delivery-settings-heading])')).toBeNull();
   });
 
   it('lists products, loads variant counts, paginates, and debounces name search', async () => {
@@ -633,5 +642,57 @@ describe('CMS authentication', () => {
     harness.detectChanges();
     expect(history.scrollTop).toBe(0);
     expect(page.textContent).toContain('New reply');
+  });
+
+  it('loads and saves delivery settings independently, validates fields, and preserves a failed draft', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    const page = harness.routeNativeElement!;
+    const delivery = page.querySelector('app-delivery-settings')!;
+    expect(delivery.textContent).toContain('Loading delivery settings');
+    http.expectOne('/api/business/settings').flush({ aiMode: 'off', timezone: 'Asia/Dhaka' });
+    http.expectOne('/api/business/ai-schedules').flush({ schedules: [] });
+    const load = http.expectOne(deliveryUrl);
+    expect(load.request.withCredentials).toBeTrue();
+    load.flush(deliveryFixture);
+    harness.detectChanges();
+    expect(delivery.textContent).toContain('Inside Dhaka');
+    expect(delivery.textContent).toContain('Outside Dhaka');
+    expect(delivery.textContent).toContain('BDT');
+
+    const fee = delivery.querySelectorAll<HTMLInputElement>('input')[0];
+    const estimate = delivery.querySelectorAll<HTMLInputElement>('input')[1];
+    const form = delivery.querySelector('form')!;
+    expect(fee.value).toBe('50.00');
+    enterValue(fee, '12.345');
+    enterValue(estimate, 'x'.repeat(51));
+    submitCatalogForm(form);
+    harness.detectChanges();
+    http.expectNone({ method: 'PUT', url: deliveryUrl });
+    expect(delivery.textContent).toContain('up to two decimal places');
+    expect(delivery.textContent).toContain('50 characters or fewer');
+
+    enterValue(fee, '75.50');
+    enterValue(estimate, '');
+    submitCatalogForm(form);
+    submitCatalogForm(form);
+    const save = http.expectOne({ method: 'PUT', url: deliveryUrl });
+    expect(save.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+    expect(save.request.body).toEqual({
+      insideDhakaFee: '75.50', outsideDhakaFee: '100.00',
+      insideDhakaDeliveryDays: null, outsideDhakaDeliveryDays: '3–4 days',
+    });
+    http.expectNone({ method: 'PUT', url: '/api/business/settings' });
+    http.expectNone({ method: 'PUT', url: '/api/business/ai-schedules' });
+    save.flush({}, { status: 500, statusText: 'Server Error' });
+    harness.detectChanges();
+    expect(fee.value).toBe('75.50');
+    expect(delivery.textContent).toContain('Your edits are still here');
+
+    submitCatalogForm(form);
+    http.expectOne({ method: 'PUT', url: deliveryUrl })
+      .flush({ ...deliveryFixture, insideDhakaFee: '75.50', insideDhakaDeliveryDays: null });
+    harness.detectChanges();
+    expect(delivery.textContent).toContain('Delivery settings saved.');
   });
 });

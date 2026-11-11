@@ -1,0 +1,43 @@
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <h2 id="delivery-settings-heading">Delivery Settings</h2>
+    @if (loading()) {
+      <p role="status">Loading delivery settings…</p>
+      <mat-progress-bar mode="indeterminate" aria-label="Loading delivery settings" />
+    } @else if (loadError()) {
+      <p role="alert" class="error">Couldn’t load delivery settings.</p>
+      <button mat-stroked-button type="button" (click)="load()">Retry delivery settings</button>
+    } @else {
+      <form [formGroup]="form" (ngSubmit)="save()" aria-labelledby="delivery-settings-heading"
+        [attr.aria-busy]="saving()">
+        <div class="locations">
+          @for (location of locations; track location.fee) {
+            <fieldset>
+              <legend>{{ location.label }}</legend>
+              <mat-form-field appearance="outline">
+                <mat-label>Delivery fee ({{ currency() }})</mat-label>
+                <input matInput inputmode="decimal" [formControlName]="location.fee">
+                <mat-error>Enter 0 to 99,999,999.99 with up to two decimal places.</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Estimated delivery days</mat-label>
+                <input matInput [formControlName]="location.estimate" placeholder="e.g. 2–3 business days">
+                <mat-hint>Optional</mat-hint>
+                <mat-error>Use 50 characters or fewer.</mat-error>
+              </mat-form-field>
+            </fieldset>
+          }
+        </div>
+        <div class="actions">
+          <button mat-flat-button type="submit" [disabled]="saving()">
+            {{ saving() ? 'Saving delivery settings…' : 'Save delivery settings' }}
+          </button>
+          @if (feedback(); as result) {
+            <span [attr.role]="result.kind === 'error' ? 'alert' : 'status'"
+              [class.error]="result.kind === 'error'">{{ result.message }}</span>
+          }
+        </div>
+      </form>
+    }
+  </mat-card-content>
+</mat-card>
