@@ -3,6 +3,12 @@ import { Route, Routes } from '@angular/router';
 import { redirectSignedIn, requireWorkspace } from './auth.guards';
 import { businessAdmin, superAdmin, Workspace } from './workspaces';
 
+const productEditor: Route = {
+  title: 'Product Editor | Messenger Support',
+  loadComponent: () => import('./product-editor').then((module) => module.ProductEditorPage),
+  canDeactivate: [(editor: { canLeave(): boolean }) => editor.canLeave()],
+};
+
 function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Routes {
   const guard = requireWorkspace(workspace.loginType);
   const layout: Route = {
@@ -19,14 +25,31 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         data: { workspace },
         loadComponent: () => import('./workspace-pages').then((module) => module.DashboardPage),
       },
-      ...workspace.sections.map((section) => ({
-        path: section.path,
-        title: `${section.label} | Messenger Support`,
-        data: { section },
-        loadComponent: workspace.loginType === 'business' && section.path === 'ai-settings'
-          ? () => import('./business-ai-settings').then((module) => module.BusinessAiSettingsPage)
-          : () => import('./workspace-pages').then((module) => module.FeaturePage),
-      })),
+      ...workspace.sections.map((section): Route => {
+        if (workspace.loginType === 'business' && section.path === 'products') {
+          return {
+            path: 'products',
+            children: [
+              {
+                path: '',
+                pathMatch: 'full',
+                title: 'Products | Messenger Support',
+                loadComponent: () => import('./product-list').then((module) => module.ProductListPage),
+              },
+              { ...productEditor, path: 'new' },
+              { ...productEditor, path: ':id/edit' },
+            ],
+          };
+        }
+        return {
+          path: section.path,
+          title: `${section.label} | Messenger Support`,
+          data: { section },
+          loadComponent: workspace.loginType === 'business' && section.path === 'ai-settings'
+            ? () => import('./business-ai-settings').then((module) => module.BusinessAiSettingsPage)
+            : () => import('./workspace-pages').then((module) => module.FeaturePage),
+        };
+      }),
     ],
   };
 

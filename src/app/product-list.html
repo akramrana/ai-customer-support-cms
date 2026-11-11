@@ -1,0 +1,96 @@
+<header class="page-heading">
+  <h1>Products</h1>
+  <p>Manage your product catalog, variants, and images.</p>
+</header>
+
+<div class="catalog-toolbar">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search">
+    <mat-label>Search by product name</mat-label>
+    <input matInput [formControl]="search" maxlength="255" type="search">
+  </mat-form-field>
+  <a mat-flat-button routerLink="new">Add Product</a>
+</div>
+
+@if (success()) { <p role="status" class="feedback">{{ success() }}</p> }
+@if (actionError()) { <p role="alert" class="feedback error">{{ actionError() }}</p> }
+
+<section class="catalog-results" aria-label="Product results" [attr.aria-busy]="loading()">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading products" />
+    <div class="results-state" role="status">Loading products…</div>
+  } @else if (error()) {
+    <div class="results-state">
+      <p role="alert" class="error">{{ error() }}</p>
+      <button mat-stroked-button type="button" (click)="reload()">Retry</button>
+    </div>
+  } @else {
+    @if (items().length) {
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Product list">
+        <table mat-table [dataSource]="items()">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef scope="col">Product name</th>
+            <td mat-cell *matCellDef="let product">{{ product.name }}</td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef scope="col">Status</th>
+            <td mat-cell *matCellDef="let product">
+              <mat-chip-set aria-label="Product status">
+                <mat-chip class="product-status" [class.active]="product.isActive" [disableRipple]="true">
+                  {{ product.isActive ? 'Active' : 'Inactive' }}
+                </mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="variants">
+            <th mat-header-cell *matHeaderCellDef scope="col">Variants</th>
+            <td mat-cell *matCellDef="let product">
+              @let count = counts()[product.id];
+              {{ count === undefined ? 'Loading…' : count === null ? 'Unavailable' : count }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef scope="col">Actions</th>
+            <td mat-cell *matCellDef="let product">
+              <div class="row-actions">
+                <a mat-icon-button [routerLink]="[product.id, 'edit']"
+                  matTooltip="Edit product" [attr.aria-label]="'Edit ' + product.name">
+                  <mat-icon aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor" focusable="false">
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    </svg>
+                  </mat-icon>
+                </a>
+                @if (product.isActive) {
+                  <button mat-icon-button type="button" [disabled]="deactivating() !== null"
+                    [matTooltip]="deactivating() === product.id ? 'Deactivating…' : 'Deactivate product'"
+                    [attr.aria-label]="'Deactivate ' + product.name" (click)="deactivate(product)">
+                    <mat-icon aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="currentColor" focusable="false">
+                        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM4 12a8 8 0 0 1 12.9-6.32L5.68 16.9A7.96 7.96 0 0 1 4 12zm8 8a7.96 7.96 0 0 1-4.9-1.68L18.32 7.1A8 8 0 0 1 12 20z"/>
+                      </svg>
+                    </mat-icon>
+                  </button>
+                }
+              </div>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+      </div>
+    } @else {
+      <div class="results-state" role="status">
+        <p class="state-title">{{ search.value.trim() ? 'No products match your search.' : 'No products on this page.' }}</p>
+        @if (search.value.trim()) {
+          <p>Try a different product name.</p>
+        } @else if (!total()) {
+          <p>Add a product to start your catalog.</p>
+        }
+      </div>
+    }
+    @if (total()) {
+      <mat-paginator [length]="total()" [pageIndex]="page()" [pageSize]="pageSize()"
+        [pageSizeOptions]="[10, 20, 50]" (page)="changePage($event)" aria-label="Product pages" />
+    }
+  }
+</section>

@@ -1,0 +1,123 @@
+<header class="page-heading heading-row">
+  <h1>{{ id() ? 'Edit product' : 'Add product' }}</h1>
+  <a mat-button routerLink="/business-admin/products">Back to products</a>
+</header>
+
+@if (loading()) {
+  <p role="status">Loading product…</p>
+  <mat-progress-bar mode="indeterminate" aria-label="Loading product" />
+} @else if (loadError()) {
+  <p class="error" role="alert">{{ loadError() }}</p>
+  <button mat-stroked-button type="button" (click)="reload()">Retry</button>
+} @else {
+  <form class="editor" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="saving()">
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <h2>Product details</h2>
+        <div class="fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" maxlength="255" required>
+            <mat-error>Enter a product name.</mat-error>
+          </mat-form-field>
+          <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
+          <mat-form-field appearance="outline" class="full">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3"></textarea>
+            <mat-error>Description is too long.</mat-error>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-content formArrayName="variants">
+        <div class="section-heading">
+          <h2>Variants</h2>
+          <button mat-stroked-button type="button" [disabled]="saving()" (click)="addVariant()">Add variant</button>
+        </div>
+        @for (variant of variants.controls; track variant; let index = $index) {
+          <section class="entry" [formGroupName]="index" [attr.aria-label]="'Variant ' + (index + 1)">
+            <div class="section-heading">
+              <h3>Variant {{ index + 1 }}</h3>
+              @if (!variant.controls.id.value) {
+                <button mat-button type="button" [disabled]="saving()" (click)="removeNewVariant(index)">Remove variant</button>
+              }
+            </div>
+            <div class="fields">
+              <mat-form-field appearance="outline">
+                <mat-label>SKU</mat-label>
+                <input matInput formControlName="sku" maxlength="100" required>
+                <mat-error>Enter a SKU.</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Variant name</mat-label>
+                <input matInput formControlName="variantName" maxlength="150">
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Price</mat-label>
+                <input matInput formControlName="price" inputmode="decimal" required>
+                <mat-error>Use a nonnegative price with up to two decimal places.</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Stock quantity</mat-label>
+                <input matInput formControlName="stockQty" type="number" step="1" min="0" required>
+                <mat-error>Enter a whole number from 0 to 4,294,967,295.</mat-error>
+              </mat-form-field>
+              <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
+            </div>
+          </section>
+        } @empty {
+          <p>No variants</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-content formArrayName="images">
+        <div class="section-heading">
+          <h2>Images</h2>
+          <button mat-stroked-button type="button" [disabled]="saving()" (click)="addImage()">Add image</button>
+        </div>
+        @for (image of images.controls; track image; let index = $index) {
+          <section class="entry" [formGroupName]="index" [attr.aria-label]="'Image ' + (index + 1)">
+            <div class="section-heading">
+              <h3>Image {{ index + 1 }}</h3>
+              <button mat-button type="button" [disabled]="saving()" (click)="removeImage(index)">Remove image</button>
+            </div>
+            <div class="fields">
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>Image URL</mat-label>
+                <input matInput formControlName="imageUrl" type="url" maxlength="2048" required>
+                <mat-error>Enter an HTTP or HTTPS URL without credentials.</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Alt text</mat-label>
+                <input matInput formControlName="altText" maxlength="255">
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Sort order</mat-label>
+                <input matInput formControlName="sortOrder" type="number" step="1" min="0" required>
+                <mat-error>Enter a whole number from 0 to 2,147,483,647.</mat-error>
+              </mat-form-field>
+              @if (previewUrl(image.controls.imageUrl.value); as url) {
+                @for (source of [url]; track source) {
+                  <img #preview class="image-preview" [src]="source" [alt]="image.controls.altText.value || 'Product image preview'"
+                    loading="lazy" referrerpolicy="no-referrer" (error)="preview.hidden = true">
+                }
+              }
+            </div>
+          </section>
+        } @empty {
+          <p>No images</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    <div class="actions">
+      <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save product' }}</button>
+      <a mat-button routerLink="/business-admin/products">Cancel</a>
+    </div>
+  </form>
+}

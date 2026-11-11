@@ -1,0 +1,39 @@
+.heading-row, .section-heading, .actions {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.heading-row, .section-heading { justify-content: space-between; }
+mat-card-content { padding: clamp(16px, 4vw, 28px); }
+h2, h3 { margin: 0; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1rem; }
+.search { width: min(100%, 360px); }
+.table-scroll { overflow-x: auto; }
+table { min-width: 580px; }
+td:first-child { overflow-wrap: anywhere; }
+td .actions { gap: 0; }
+.product-status { color: var(--muted); font-weight: 600; }
+.product-status.active { color: var(--accent); }
+.error { color: var(--mat-sys-error); }
+
+.editor { display: grid; gap: 16px; }
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  align-items: start;
+  gap: 8px 16px;
+  margin-top: 16px;
+}
+.full { grid-column: 1 / -1; }
+.entry { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.image-preview {
+  width: 96px;
+  height: 72px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--workspace-bg);
+}
