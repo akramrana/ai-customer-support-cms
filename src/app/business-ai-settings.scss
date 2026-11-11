@@ -1,0 +1,41 @@
+.settings-layout { display: grid; gap: 20px; }
+mat-card-content { padding: clamp(16px, 4vw, 28px); }
+h2 { margin: 0; font-size: 1.25rem; }
+h3 { margin: 0; font-size: 1rem; }
+
+.mode-options, .actions, .day-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mode-options { margin: 8px 0 16px; }
+.timezone { width: min(100%, 360px); }
+.actions { margin-top: 16px; }
+.error { color: var(--mat-sys-error); }
+
+.day {
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+
+.day-heading { justify-content: space-between; }
+.empty { margin: 4px 0 0; font-size: .875rem; }
+
+.interval {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 180px) max-content max-content;
+  align-items: start;
+  gap: 0 12px;
+  margin-top: 12px;
+}
+
+.interval mat-slide-toggle, .interval button { margin-top: 8px; }
+.interval-note { grid-column: 1 / -1; margin: 0 0 8px; font-size: .875rem; }
+.schedule-feedback { margin: 0; }
+
+@media (max-width: 960px) {
+  .interval { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .interval button { justify-self: end; }
+}

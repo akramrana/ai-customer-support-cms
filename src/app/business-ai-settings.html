@@ -1,0 +1,108 @@
+<header class="page-heading">
+  <h1>AI Settings</h1>
+  <p>Choose when AI can reply to Messenger conversations.</p>
+</header>
+
+@if (loading()) {
+  <p role="status">Loading AI settings…</p>
+  <mat-progress-bar mode="indeterminate" aria-label="Loading AI settings" />
+} @else if (loadError()) {
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <p role="alert" class="error">{{ loadError() }}</p>
+      <button mat-stroked-button type="button" (click)="load()">Retry loading</button>
+    </mat-card-content>
+  </mat-card>
+} @else {
+  <div class="settings-layout">
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <form [formGroup]="settings" (ngSubmit)="saveSettings()" [attr.aria-busy]="saving() === 'settings'">
+          <h2 id="mode-heading">AI reply mode</h2>
+          <mat-radio-group class="mode-options" aria-labelledby="mode-heading" formControlName="aiMode">
+            @for (option of modes; track option) {
+              <mat-radio-button [value]="option">{{ option.toUpperCase() }}</mat-radio-button>
+            }
+          </mat-radio-group>
+          <mat-form-field appearance="outline" class="timezone">
+            <mat-label>Time zone</mat-label>
+            <select matNativeControl formControlName="timezone">
+              @for (zone of zones(); track zone) {
+                <option [value]="zone">{{ zone }}</option>
+              }
+            </select>
+            <mat-hint>Weekly intervals use this time zone.</mat-hint>
+          </mat-form-field>
+          <div class="actions">
+            <button mat-flat-button type="submit" [disabled]="saving() !== null">
+              {{ saving() === 'settings' ? 'Saving AI settings…' : 'Save AI settings' }}
+            </button>
+            @if (settingsFeedback(); as feedback) {
+              <span [attr.role]="feedback.kind === 'error' ? 'alert' : 'status'"
+                [class.error]="feedback.kind === 'error'">{{ feedback.message }}</span>
+            }
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    @if (mode() === 'scheduled') {
+      <mat-card appearance="outlined">
+        <mat-card-content>
+          <form [formGroup]="scheduleForm" (ngSubmit)="saveSchedules()" [attr.aria-busy]="saving() === 'schedules'">
+            <h2>Weekly schedule</h2>
+            <p>Use 24-hour time. If an end time is earlier than its start time, the interval continues into the following day.</p>
+
+            @for (day of days; track day.label; let weekday = $index) {
+              <section class="day" [attr.aria-labelledby]="'weekday-' + weekday">
+                <div class="day-heading">
+                  <h3 [id]="'weekday-' + weekday">{{ day.label }}</h3>
+                  <button mat-stroked-button type="button" [disabled]="saving() !== null"
+                    [attr.aria-label]="'Add interval for ' + day.label" (click)="addInterval(weekday)">
+                    Add interval
+                  </button>
+                </div>
+                @for (interval of day.intervals.controls; track interval; let index = $index) {
+                  <div class="interval" [formGroup]="interval" role="group"
+                    [attr.aria-label]="day.label + ' interval ' + (index + 1)">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Start time</mat-label>
+                      <input matInput formControlName="startTime" placeholder="HH:mm" maxlength="8">
+                      <mat-error>Use HH:mm or HH:mm:ss.</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>End time</mat-label>
+                      <input matInput formControlName="endTime" placeholder="HH:mm" maxlength="8">
+                      <mat-error>Use HH:mm or HH:mm:ss.</mat-error>
+                    </mat-form-field>
+                    <mat-slide-toggle formControlName="isActive">Enabled</mat-slide-toggle>
+                    <button mat-button type="button" [disabled]="saving() !== null"
+                      [attr.aria-label]="'Remove ' + day.label + ' interval ' + (index + 1)"
+                      (click)="removeInterval(weekday, index)">Remove</button>
+                    @if (interval.hasError('sameTime') && interval.touched) {
+                      <p class="interval-note error" role="alert">Start and end times must differ.</p>
+                    } @else if (endsNextDay(interval)) {
+                      <p class="interval-note">Ends {{ days[(weekday + 1) % days.length].label }}.</p>
+                    }
+                  </div>
+                } @empty {
+                  <p class="empty">No intervals</p>
+                }
+              </section>
+            }
+
+            <div class="actions">
+              <button mat-flat-button type="submit" [disabled]="saving() !== null">
+                {{ saving() === 'schedules' ? 'Saving schedule…' : 'Save schedule' }}
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    }
+    @if (scheduleFeedback(); as feedback) {
+      <p class="schedule-feedback" [attr.role]="feedback.kind === 'error' ? 'alert' : 'status'"
+        [class.error]="feedback.kind === 'error'">{{ feedback.message }}</p>
+    }
+  </div>
+}

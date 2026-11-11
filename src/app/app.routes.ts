@@ -23,7 +23,9 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         path: section.path,
         title: `${section.label} | Messenger Support`,
         data: { section },
-        loadComponent: () => import('./workspace-pages').then((module) => module.FeaturePage),
+        loadComponent: workspace.loginType === 'business' && section.path === 'ai-settings'
+          ? () => import('./business-ai-settings').then((module) => module.BusinessAiSettingsPage)
+          : () => import('./workspace-pages').then((module) => module.FeaturePage),
       })),
     ],
   };

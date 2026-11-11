@@ -84,7 +84,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections) {
+      for (const section of sections.filter((name) => name !== 'ai-settings')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');
@@ -174,5 +174,124 @@ describe('CMS authentication', () => {
     await harness.fixture.whenStable();
     expect(auth.session()).toBeNull();
     expect(router.url).toBe('/business-admin/login?notice=expired');
+  });
+
+  it('loads both AI resources and saves mode changes without writing or clearing schedules', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    const page = harness.routeNativeElement!;
+    expect(page.textContent).toContain('Loading AI settings');
+    http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'Asia/Dhaka' });
+    const schedules = http.expectOne('/api/business/ai-schedules');
+    expect(schedules.request.withCredentials).toBeTrue();
+    schedules.flush({
+      schedules: [{ weekday: 2, startTime: '17:00:00', endTime: '09:00:15', isActive: true }],
+    });
+    harness.detectChanges();
+    expect(page.textContent).toContain('Ends Wednesday.');
+    expect(page.querySelector('select')?.value).toBe('Asia/Dhaka');
+
+    const chooseMode = (label: string) => {
+      const option = Array.from(page.querySelectorAll('mat-radio-button'))
+        .find((button) => button.textContent?.trim() === label)!;
+      option.querySelector('input')!.click();
+      harness.detectChanges();
+    };
+
+    chooseMode('OFF');
+    expect(page.textContent).not.toContain('Weekly schedule');
+    const settingsForm = page.querySelector('form')!;
+    settingsForm.dispatchEvent(new Event('submit', { cancelable: true }));
+    settingsForm.dispatchEvent(new Event('submit', { cancelable: true }));
+    const save = http.expectOne({ method: 'PUT', url: '/api/business/settings' });
+    expect(save.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+    expect(save.request.body).toEqual({ aiMode: 'off', timezone: 'Asia/Dhaka' });
+    http.expectNone({ method: 'PUT', url: '/api/business/ai-schedules' });
+    save.flush(save.request.body);
+    harness.detectChanges();
+    expect(page.textContent).toContain('AI settings saved.');
+
+    chooseMode('SCHEDULED');
+    expect(page.querySelector<HTMLInputElement>('[formControlName=endTime]')?.value).toBe('09:00:15');
+  });
+
+  it('validates intervals and keeps the schedule draft after a separate save fails', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    const page = harness.routeNativeElement!;
+    http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'UTC' });
+    http.expectOne('/api/business/ai-schedules').flush({ schedules: [] });
+    harness.detectChanges();
+
+    const forms = page.querySelectorAll('form');
+    const submit = (form: HTMLFormElement) =>
+      form.dispatchEvent(new Event('submit', { cancelable: true }));
+    submit(forms[0]);
+    http.expectOne({ method: 'PUT', url: '/api/business/settings' })
+      .flush({ aiMode: 'scheduled', timezone: 'UTC' });
+
+    const add = page.querySelector<HTMLButtonElement>('[aria-label="Add interval for Tuesday"]')!;
+    add.click();
+    harness.detectChanges();
+    const edit = (interval: Element, control: string, value: string) => {
+      const input = interval.querySelector<HTMLInputElement>(`[formControlName=${control}]`)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    const first = page.querySelector('[aria-label="Tuesday interval 1"]')!;
+    edit(first, 'startTime', '17:00');
+    edit(first, 'endTime', '17:00:00');
+    submit(forms[1]);
+    harness.detectChanges();
+    http.expectNone({ method: 'PUT', url: '/api/business/ai-schedules' });
+    expect(page.textContent).toContain('Start and end times must differ.');
+
+    edit(first, 'endTime', '09:00');
+    add.click();
+    harness.detectChanges();
+    const second = page.querySelector('[aria-label="Tuesday interval 2"]')!;
+    edit(second, 'startTime', '10:00');
+    edit(second, 'endTime', '12:00');
+    second.querySelector('mat-slide-toggle button')!.dispatchEvent(new Event('click'));
+    submit(forms[1]);
+    submit(forms[1]);
+    const save = http.expectOne({ method: 'PUT', url: '/api/business/ai-schedules' });
+    expect(save.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+    expect(save.request.body).toEqual({
+      schedules: [
+        { weekday: 2, startTime: '17:00', endTime: '09:00', isActive: true },
+        { weekday: 2, startTime: '10:00', endTime: '12:00', isActive: false },
+      ],
+    });
+    save.flush({ error: 'Business settings service unavailable.' }, {
+      status: 500, statusText: 'Internal Server Error',
+    });
+    harness.detectChanges();
+    http.expectNone({ method: 'PUT', url: '/api/business/ai-schedules' });
+    expect(page.textContent).toContain('AI settings saved.');
+    expect(page.textContent).toContain('Your edits are still here.');
+
+    second.querySelector<HTMLButtonElement>('[aria-label="Remove Tuesday interval 2"]')!.click();
+    harness.detectChanges();
+    submit(forms[1]);
+    const manualSave = http.expectOne({ method: 'PUT', url: '/api/business/ai-schedules' });
+    expect(manualSave.request.body.schedules.length).toBe(1);
+    manualSave.flush({
+      schedules: [{ weekday: 2, startTime: '17:00:00', endTime: '09:00:00', isActive: true }],
+    });
+    harness.detectChanges();
+    expect(page.textContent).toContain('Weekly schedule saved.');
+  });
+
+  it('keeps write controls hidden when the initial schedule load fails', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'Asia/Dhaka' });
+    http.expectOne('/api/business/ai-schedules').flush({ error: 'Unavailable' }, {
+      status: 500, statusText: 'Internal Server Error',
+    });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('Unable to load AI settings and schedules.');
+    expect(harness.routeNativeElement?.querySelector('form')).toBeNull();
   });
 });
