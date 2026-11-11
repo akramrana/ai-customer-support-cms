@@ -41,6 +41,13 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
             ],
           };
         }
+        if (workspace.loginType === 'business' && section.path === 'conversations') {
+          return {
+            path: section.path,
+            title: 'Conversations | Messenger Support',
+            loadComponent: () => import('./conversation-viewer').then((module) => module.ConversationViewerPage),
+          };
+        }
         return {
           path: section.path,
           title: `${section.label} | Messenger Support`,

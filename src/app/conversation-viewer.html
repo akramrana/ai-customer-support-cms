@@ -1,0 +1,86 @@
+<header class="page-heading">
+  <h1>Conversations</h1>
+  <p>View customer messages and replies from Facebook Messenger.</p>
+</header>
+
+<div class="inbox" [class.show-thread]="showThread()">
+  <section class="threads" aria-labelledby="inbox-heading">
+    <header class="panel-header">
+      <h2 id="inbox-heading">Inbox</h2>
+      <button mat-button type="button" [disabled]="listLoading()" (click)="refreshList()">Refresh conversations</button>
+    </header>
+    @if (listLoading()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading conversations" />
+    }
+    <div class="scroll-pane thread-list" tabindex="0" role="region" aria-label="Conversation list"
+      [attr.aria-busy]="listLoading()">
+      @if (listError()) { <p class="notice error" role="alert">{{ listError() }}</p> }
+      @for (conversation of conversations(); track conversation.id) {
+        <button type="button" class="thread" [class.selected]="selected()?.id === conversation.id"
+          [attr.aria-current]="selected()?.id === conversation.id ? 'true' : null"
+          (click)="openConversation(conversation)">
+          <span class="thread-name">{{ conversation.customerName || conversation.customerPsid }}</span>
+          @if (conversation.lastActivityAt) {
+            <time [attr.datetime]="conversation.lastActivityAt">{{ conversation.lastActivityAt | date:'MMM d, h:mm a' }}</time>
+          }
+          <span class="preview">{{ conversation.lastMessagePreview || 'No message preview' }}</span>
+          <span class="count">{{ conversation.messageCount }} {{ conversation.messageCount === 1 ? 'message' : 'messages' }}</span>
+        </button>
+      } @empty {
+        @if (!listLoading() && !listError()) {
+          <p class="notice" role="status">{{ total() ? 'No conversations on this page.' : 'No conversations yet.' }}</p>
+        }
+      }
+    </div>
+    @if (total() > pageSize) {
+      <mat-paginator [length]="total()" [pageIndex]="listPage() - 1" [pageSize]="pageSize"
+        [hidePageSize]="true" [disabled]="listLoading()" (page)="changePage($event)" aria-label="Conversation pages" />
+    }
+  </section>
+
+  <section class="thread-panel" aria-labelledby="thread-heading">
+    @if (selected(); as conversation) {
+      <header class="panel-header">
+        <button class="back" mat-button type="button" (click)="showThread.set(false)">Back to inbox</button>
+        <h2 id="thread-heading">{{ conversation.customerName || conversation.customerPsid }}</h2>
+        <button mat-button type="button" [disabled]="messageLoading()" (click)="refreshMessages()">Refresh messages</button>
+      </header>
+      @if (messageLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Loading messages" />
+      }
+      @if (messageError()) { <p class="notice error" role="alert">{{ messageError() }}</p> }
+
+      <div class="scroll-pane history" #historyPane tabindex="0" role="region" aria-label="Message history"
+        [attr.aria-busy]="messageLoading()">
+        @if (oldestPage() > 1) {
+          <div class="older">
+            <button mat-stroked-button type="button" [disabled]="messageLoading()" (click)="loadOlder()">Load older messages</button>
+          </div>
+        }
+        @if (messages().length) {
+          <ol class="messages">
+            @for (message of messages(); track message.id) {
+              <li class="message" [class.outgoing]="message.direction === 'outgoing'">
+                <div class="bubble">
+                  <span class="sender">{{ senderLabels[message.senderType] }}</span>
+                  <p class="body">{{ message.body ?? (message.deliveryStatus === 'failed' ? 'No reply was generated.' : 'No message text.') }}</p>
+                  <div class="message-meta">
+                    <time [attr.datetime]="message.createdAt">{{ message.createdAt | date:'MMM d, y, h:mm a' }}</time>
+                    @if (message.deliveryStatus) {
+                      <span class="delivery" [class.error]="message.deliveryStatus === 'failed'">{{ message.deliveryStatus }}</span>
+                    }
+                  </div>
+                </div>
+              </li>
+            }
+          </ol>
+        } @else if (!messageLoading() && !messageError()) {
+          <p class="notice" role="status">No messages in this conversation yet.</p>
+        }
+      </div>
+    } @else {
+      <header class="panel-header"><h2 id="thread-heading">Message history</h2></header>
+      <p class="notice">Select a conversation to view its messages.</p>
+    }
+  </section>
+</div>

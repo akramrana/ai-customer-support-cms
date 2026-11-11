@@ -52,6 +52,27 @@ function submitCatalogForm(form: HTMLFormElement): void {
   form.dispatchEvent(new Event('submit', { cancelable: true }));
 }
 
+const conversationUrl = '/api/business/conversations';
+const conversationRoute = '/business-admin/conversations';
+const messageUrl = conversationUrl + '/10/messages';
+const conversation = {
+  id: '10', customerPsid: 'customer-10', customerName: 'Nadia',
+  lastActivityAt: '2026-11-11T09:00:00Z', lastMessagePreview: 'Hello', messageCount: 21,
+};
+
+function chatMessage(id: string, body: string, outgoing = false) {
+  return {
+    id, body, createdAt: '2026-11-11T09:00:00Z',
+    direction: outgoing ? 'outgoing' : 'incoming',
+    senderType: outgoing ? 'ai' : 'customer',
+    deliveryStatus: outgoing ? 'sent' : 'received',
+  };
+}
+
+function chatPage<T>(items: T[], page: number, total: number) {
+  return { items, page, pageSize: 20, total };
+}
+
 describe('CMS authentication', () => {
   let http: HttpTestingController;
   let auth: AuthService;
@@ -112,7 +133,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections.filter((name) => name !== 'ai-settings' && name !== 'products')) {
+      for (const section of sections.filter((name) => name !== 'ai-settings' && name !== 'products' && name !== 'conversations')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');
@@ -452,5 +473,165 @@ describe('CMS authentication', () => {
     expect(harness.routeNativeElement?.textContent).not.toContain('private database message');
     clickText(harness.routeNativeElement!, 'Retry');
     http.expectOne((request) => request.url === catalogUrl).flush({ items: [], page: 1, pageSize: 20, total: 0 });
+  });
+
+  it('loads conversations in server order and requests additional list pages on demand', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create(conversationRoute);
+    const request = http.expectOne((req) => req.url === conversationUrl);
+    expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.params.keys().sort()).toEqual(['page', 'pageSize']);
+    expect(request.request.params.get('page')).toBe('1');
+    request.flush(chatPage([conversation, { ...conversation, id: '9', customerName: null, customerPsid: 'PSID-9' }], 1, 22));
+    harness.detectChanges();
+
+    const page = harness.routeNativeElement!;
+    expect(Array.from(page.querySelectorAll('.thread-name'), (row) => row.textContent?.trim()))
+      .toEqual(['Nadia', 'PSID-9']);
+    expect(page.textContent).toContain('21 messages');
+    page.querySelector<HTMLButtonElement>('.mat-mdc-paginator-navigation-next')!.click();
+    const next = http.expectOne((req) => req.url === conversationUrl && req.params.get('page') === '2');
+    next.flush(chatPage([], 2, 22));
+    harness.detectChanges();
+    expect(page.textContent).toContain('No conversations on this page.');
+  });
+
+  it('opens the newest page, prepends older messages once, and renders untrusted text literally', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create(conversationRoute);
+    const page = harness.routeNativeElement!;
+    http.expectOne((req) => req.url === conversationUrl).flush(chatPage([conversation], 1, 1));
+    harness.detectChanges();
+    page.querySelector<HTMLButtonElement>('.thread')!.click();
+    const payload = '<img src=x onerror=alert(1)>';
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '2')
+      .flush(chatPage([chatMessage('100', payload, true)], 2, 21));
+    harness.detectChanges();
+    expect(page.querySelector('.thread')?.getAttribute('aria-current')).toBe('true');
+    expect(page.querySelector('.body')?.textContent).toBe(payload);
+    expect(page.querySelector('.message img')).toBeNull();
+    expect(page.querySelector('.message')?.classList.contains('outgoing')).toBeTrue();
+
+    clickText(page, 'Load older messages');
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '1')
+      .flush(chatPage([chatMessage('9', 'Earlier'), chatMessage('100', payload, true)], 1, 21));
+    harness.detectChanges();
+    expect(Array.from(page.querySelectorAll('.body'), (node) => node.textContent))
+      .toEqual(['Earlier', payload]);
+    expect(page.textContent).toContain('sent');
+  });
+
+  it('keeps the selected thread and loaded messages during refresh and pagination failures', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create(conversationRoute);
+    const page = harness.routeNativeElement!;
+    http.expectOne((req) => req.url === conversationUrl).flush(chatPage([conversation], 1, 1));
+    harness.detectChanges();
+    page.querySelector<HTMLButtonElement>('.thread')!.click();
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '2')
+      .flush(chatPage([chatMessage('21', 'Saved reply')], 2, 21));
+    harness.detectChanges();
+
+    clickText(page, 'Refresh conversations');
+    http.expectOne((req) => req.url === conversationUrl)
+      .flush(chatPage([{ ...conversation, customerName: 'Nadia Updated' }], 1, 1));
+    harness.detectChanges();
+    expect(page.querySelector('#thread-heading')?.textContent).toContain('Nadia Updated');
+    expect(page.textContent).toContain('Saved reply');
+
+    clickText(page, 'Load older messages');
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '1')
+      .error(new ProgressEvent('error'));
+    harness.detectChanges();
+    expect(page.textContent).toContain('Couldn’t load older messages');
+    expect(page.textContent).toContain('Saved reply');
+
+    clickText(page, 'Refresh messages');
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '2')
+      .flush(chatPage([chatMessage('21', 'Saved reply')], 2, 41));
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '3')
+      .flush({ error: 'private error' }, { status: 500, statusText: 'Server Error' });
+    harness.detectChanges();
+    expect(page.textContent).toContain('Couldn’t load messages');
+    expect(page.textContent).toContain('Saved reply');
+    expect(page.textContent).not.toContain('private error');
+
+    clickText(page, 'Refresh messages');
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '2')
+      .flush(chatPage([chatMessage('21', 'Saved reply'), chatMessage('22', 'New reply')], 2, 22));
+    harness.detectChanges();
+    expect(Array.from(page.querySelectorAll('.body'), (node) => node.textContent))
+      .toEqual(['Saved reply', 'New reply']);
+
+    clickText(page, 'Refresh messages');
+    http.expectOne((req) => req.url === messageUrl)
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    harness.detectChanges();
+    expect(page.textContent).toContain('This conversation is no longer available.');
+    expect(page.textContent).toContain('New reply');
+  });
+
+  it('switches between inbox and thread at mobile width and handles an empty thread', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create(conversationRoute);
+    const page = harness.routeNativeElement!;
+    const host = page.querySelector('.inbox')!.parentElement!;
+    host.style.width = '380px';
+    http.expectOne((req) => req.url === conversationUrl).flush(chatPage([{ ...conversation, messageCount: 0 }], 1, 1));
+    harness.detectChanges();
+    const inbox = page.querySelector<HTMLElement>('.threads')!;
+    const thread = page.querySelector<HTMLElement>('.thread-panel')!;
+    expect(getComputedStyle(thread).display).toBe('none');
+    page.querySelector<HTMLButtonElement>('.thread')!.click();
+    http.expectOne((req) => req.url === messageUrl).flush(chatPage([], 1, 0));
+    harness.detectChanges();
+    expect(getComputedStyle(inbox).display).toBe('none');
+    expect(getComputedStyle(thread).display).toBe('flex');
+    expect(thread.textContent).toContain('No messages in this conversation yet.');
+    clickText(thread, 'Back to inbox');
+    harness.detectChanges();
+    expect(getComputedStyle(inbox).display).toBe('flex');
+    expect(getComputedStyle(thread).display).toBe('none');
+    expect(inbox.querySelector('.thread')?.getAttribute('aria-current')).toBe('true');
+  });
+
+  it('uses the existing permission and expired-session handling for conversation reads', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create(conversationRoute);
+    http.expectOne((req) => req.url === conversationUrl).flush({}, { status: 403, statusText: 'Forbidden' });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('permission to view these conversations');
+    clickText(harness.routeNativeElement!, 'Refresh conversations');
+    http.expectOne((req) => req.url === conversationUrl).flush({}, { status: 401, statusText: 'Unauthorized' });
+    await harness.fixture.whenStable();
+    expect(router.url).toBe('/business-admin/login?notice=expired');
+  });
+
+  it('opens at the newest message and preserves scroll position when reading older messages', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create(conversationRoute);
+    const page = harness.routeNativeElement!;
+    http.expectOne((req) => req.url === conversationUrl)
+      .flush(chatPage([{ ...conversation, messageCount: 40 }], 1, 1));
+    harness.detectChanges();
+    page.querySelector<HTMLButtonElement>('.thread')!.click();
+    const longMessage = 'Customer message\n'.repeat(20);
+    const newest = Array.from({ length: 20 }, (_, index) => chatMessage(String(index + 21), longMessage));
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '2')
+      .flush(chatPage(newest, 2, 40));
+    harness.detectChanges();
+    const history = page.querySelector<HTMLElement>('.history')!;
+    expect(history.scrollHeight).toBeGreaterThan(history.clientHeight);
+    expect(history.scrollHeight - history.scrollTop - history.clientHeight).toBeLessThanOrEqual(2);
+
+    history.scrollTop = 0;
+    clickText(page, 'Refresh messages');
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '2')
+      .flush(chatPage(newest, 2, 41));
+    http.expectOne((req) => req.url === messageUrl && req.params.get('page') === '3')
+      .flush(chatPage([chatMessage('41', 'New reply')], 3, 41));
+    harness.detectChanges();
+    expect(history.scrollTop).toBe(0);
+    expect(page.textContent).toContain('New reply');
   });
 });
