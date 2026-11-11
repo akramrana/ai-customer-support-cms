@@ -1,0 +1,27 @@
+<main class="login">
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Messenger Support</div>
+      <header class="page-heading">
+        <h1>{{ workspace.label }} sign in</h1>
+        <p>{{ workspace.description }}</p>
+      </header>
+      <form [formGroup]="form" aria-describedby="sign-in-status">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" autocomplete="username" formControlName="email">
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Password</mat-label>
+          <input matInput type="password" autocomplete="current-password" formControlName="password">
+        </mat-form-field>
+        <p id="sign-in-status">Sign-in will be available when the authentication API is connected.</p>
+        <button mat-flat-button type="button" disabled>Sign in</button>
+      </form>
+      <a class="preview" mat-stroked-button [routerLink]="['/', workspace.path, 'dashboard']">
+        Preview workspace
+      </a>
+      <a class="switch" [routerLink]="['/', otherWorkspace.path, 'login']">{{ otherWorkspace.label }} sign in</a>
+    </mat-card-content>
+  </mat-card>
+</main>

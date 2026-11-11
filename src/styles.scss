@@ -1,1 +1,46 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (primary: mat.$azure-palette, tertiary: mat.$blue-palette, theme-type: light),
+    typography: 'Inter, system-ui, sans-serif',
+    density: 0,
+  ));
+  color-scheme: light;
+  --workspace-bg: #f4f7fb;
+  --surface: #fff;
+  --line: #dce4ef;
+  --ink: #18263b;
+  --muted: #4c5d74;
+  --accent: #1754ac;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--workspace-bg);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+p { color: var(--muted); line-height: 1.55; }
+
+.page-heading {
+  margin-bottom: 24px;
+
+  h1 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); letter-spacing: -.035em; }
+  p { margin: 8px 0 0; }
+}
+
+.brand-mark {
+  display: inline-block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px 11px 11px 3px;
+  background: linear-gradient(145deg, #1974dc, #224aa3);
+  box-shadow: inset 0 0 0 7px #ffffff25;
+}

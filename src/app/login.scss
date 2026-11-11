@@ -1,0 +1,19 @@
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 20px;
+  background: radial-gradient(ellipse at 50% 0%, #dce9ff, transparent 70%), var(--workspace-bg);
+}
+
+mat-card { width: min(100%, 460px); }
+mat-card-content { padding: clamp(20px, 6vw, 36px); }
+
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-bottom: 28px; }
+h1 { font-size: clamp(1.5rem, 5vw, 2rem); }
+
+form { display: grid; gap: 4px; }
+form p { font-size: .875rem; margin: 0 0 12px; }
+
+.preview { display: flex; margin-top: 12px; }
+.switch { display: block; width: fit-content; margin: 20px auto 0; font-size: .875rem; }
