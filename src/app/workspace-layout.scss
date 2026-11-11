@@ -35,10 +35,28 @@
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 
-  a { margin-left: auto; }
+  .sign-out { margin-left: auto; flex-shrink: 0; }
 }
 
-.preview-label { color: var(--muted); font-size: .875rem; font-weight: 600; }
+.account-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: .875rem;
+  font-weight: 600;
+}
+
+.access-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 0 16px;
+  border-radius: 8px;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
 
 .content {
   max-width: 1200px;

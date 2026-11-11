@@ -15,5 +15,5 @@ h1 { font-size: clamp(1.5rem, 5vw, 2rem); }
 form { display: grid; gap: 4px; }
 form p { font-size: .875rem; margin: 0 0 12px; }
 
-.preview { display: flex; margin-top: 12px; }
+.sign-in-error { color: var(--mat-sys-error); }
 .switch { display: block; width: fit-content; margin: 20px auto 0; font-size: .875rem; }

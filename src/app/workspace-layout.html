@@ -23,10 +23,21 @@
         <button mat-button type="button" aria-controls="workspace-sidebar"
           [attr.aria-expanded]="sidebar.opened" (click)="sidebar.toggle()">Menu</button>
       }
-      <span class="preview-label">Workspace preview</span>
-      <a mat-button [routerLink]="['/', workspace.path, 'login']">Sign in</a>
+      <span class="account-label">{{ auth.session()?.business?.name ?? auth.session()?.user?.name }}</span>
+      <button class="sign-out" mat-button type="button" [disabled]="signingOut()" (click)="signOut()">
+        {{ signingOut() ? 'Signing out…' : 'Sign out' }}
+      </button>
     </mat-toolbar>
     <main class="content">
+      @if (signOutError()) {
+        <p class="access-message" role="alert">Unable to sign out. Refresh the page and try again.</p>
+      }
+      @if (auth.forbidden() || deniedRoute()) {
+        <div class="access-message">
+          <span role="alert">You don’t have permission to access that resource.</span>
+          <button mat-button type="button" (click)="dismissAccessError()">Dismiss</button>
+        </div>
+      }
       <router-outlet />
     </main>
   </mat-sidenav-content>

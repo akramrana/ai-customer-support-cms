@@ -1,10 +1,14 @@
 import { Route, Routes } from '@angular/router';
 
+import { redirectSignedIn, requireWorkspace } from './auth.guards';
 import { businessAdmin, superAdmin, Workspace } from './workspaces';
 
 function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Routes {
-  const preview: Route = {
+  const guard = requireWorkspace(workspace.loginType);
+  const layout: Route = {
     path: workspace.path,
+    canActivate: [guard],
+    canActivateChild: [guard],
     data: { workspace },
     loadComponent: () => import('./workspace-layout').then((module) => module.WorkspaceLayout),
     children: [
@@ -27,11 +31,12 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
   return [
     {
       path: `${workspace.path}/login`,
+      canActivate: [redirectSignedIn],
       title: `${workspace.label} Sign In | Messenger Support`,
       data: { workspace, otherWorkspace },
       loadComponent: () => import('./login').then((module) => module.LoginPage),
     },
-    preview,
+    layout,
   ];
 }
 

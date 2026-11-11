@@ -1,11 +1,12 @@
-# Pending admin API contracts
+# Admin API integration
 
-The Express server currently exposes GET and POST for `/webhook/messenger`. The admin frontend is a static preview. Confirm paths and payloads before integrating these proposed capabilities.
+Authentication uses same-origin requests to `/api/auth` and the Express session cookie. The Angular dev server proxies `/api/**` to `http://localhost:3500`. In production, serve the CMS and API on the same HTTPS origin and route `/api` to Express before applying the Angular route fallback.
 
-| Area | Required capability |
+The CMS restores the current identity through `GET /api/auth/me` and keeps the CSRF token in memory. The HTTP interceptor adds the token to authenticated API writes. The backend API documentation is in the backend repository at `docs/auth-api.md`.
+
+| Area | Pending endpoints |
 | --- | --- |
-| Authentication | Separate Super Admin and Business Admin sign-in entry points, current session lookup and session termination. Return the verified role and authorized workspace context. |
-| Platform | List and manage businesses, users and business memberships. Establish a Super Admin role and enforce it on the server. |
-| Business | Provide scoped dashboard summaries and endpoints for products and variants, inventory movements, conversations and messages, orders and AI settings and schedules. |
+| Platform | List and manage businesses, users and business memberships. |
+| Business | Provide scoped dashboard summaries and endpoints for products and variants, inventory movements, conversations and messages, orders, AI settings and schedules. |
 
-For business requests, the server must derive the active business from the authenticated session and verify membership and permissions. If a user belongs to multiple businesses, any workspace switch must verify membership before updating the session. Use 401 for missing or expired sessions and 403 for insufficient permissions. Exclude password hashes and Facebook Page tokens from all admin responses.
+For business requests, the server must derive the active business from the authenticated session and verify membership and permissions. Any future workspace switch must verify membership before updating the session. Use 401 for missing or expired sessions and 403 for insufficient permissions. Exclude password hashes and Facebook Page tokens from all admin responses.
