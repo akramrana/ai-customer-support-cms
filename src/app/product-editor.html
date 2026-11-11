@@ -55,15 +55,41 @@
                 <input matInput formControlName="variantName" maxlength="150">
               </mat-form-field>
               <mat-form-field appearance="outline">
-                <mat-label>Price</mat-label>
+                <mat-label>Price per selling unit</mat-label>
                 <input matInput formControlName="price" inputmode="decimal" required>
                 <mat-error>Use a nonnegative price with up to two decimal places.</mat-error>
               </mat-form-field>
               <mat-form-field appearance="outline">
-                <mat-label>Stock quantity</mat-label>
+                <mat-label>Stock (selling units)</mat-label>
                 <input matInput formControlName="stockQty" type="number" step="1" min="0" required>
+                <mat-hint>Whole units of the configured measure</mat-hint>
                 <mat-error>Enter a whole number from 0 to 4,294,967,295.</mat-error>
               </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Selling mode</mat-label>
+                <select matNativeControl formControlName="sellingMode">
+                  <option value="packaged">Packaged</option>
+                  <option value="by_measure">By measure</option>
+                </select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Measurement unit</mat-label>
+                <select matNativeControl formControlName="measurementUnit">
+                  <option value="pcs">Pieces (pcs)</option>
+                  <option value="g">Grams (g)</option>
+                  <option value="kg">Kilograms (kg)</option>
+                  <option value="ml">Milliliters (ml)</option>
+                  <option value="l">Liters (l)</option>
+                </select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Measurement per selling unit</mat-label>
+                <input matInput formControlName="measurementValue" inputmode="decimal" required>
+                <mat-error>Enter a positive amount with up to three decimal places.</mat-error>
+              </mat-form-field>
+              @if (variant.hasError('pieceMeasurement') && variant.touched) {
+                <p class="error full" role="alert">Pieces require packaged mode and a whole measurement value.</p>
+              }
               <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
             </div>
           </section>

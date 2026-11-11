@@ -7,7 +7,13 @@ export interface ProductFields {
   isActive: boolean;
 }
 
+export type SellingMode = 'packaged' | 'by_measure';
+export type MeasurementUnit = 'pcs' | 'g' | 'kg' | 'ml' | 'l';
+
 export interface VariantFields {
+  sellingMode: SellingMode;
+  measurementUnit: MeasurementUnit;
+  measurementValue: string;
   sku: string;
   variantName: string | null;
   price: string;

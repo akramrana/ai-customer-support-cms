@@ -15,7 +15,8 @@ import { catchError, EMPTY, finalize, Subject, switchMap } from 'rxjs';
 
 import { AuthService } from './auth.service';
 import {
-  ImageFields, ProductCatalogService, ProductCreate, ProductDetail, ProductUpdate, VariantFields,
+  ImageFields, MeasurementUnit, ProductCatalogService, ProductCreate, ProductDetail, ProductUpdate,
+  SellingMode, VariantFields,
 } from './product-catalog.service';
 
 const listUrl = '/business-admin/products';
@@ -41,7 +42,16 @@ function previewUrl(value: string): string | null {
 }
 
 function normalizeVariant<T extends VariantFields>(variant: T): T {
-  return { ...variant, sku: variant.sku.trim(), variantName: variant.variantName?.trim() || null };
+  const [whole, fraction = ''] = (variant.measurementValue ?? '1').split('.');
+  const decimals = fraction.replace(/0+$/, '');
+  return {
+    ...variant,
+    sku: variant.sku.trim(),
+    variantName: variant.variantName?.trim() || null,
+    sellingMode: variant.sellingMode ?? 'packaged',
+    measurementUnit: variant.measurementUnit ?? 'pcs',
+    measurementValue: String(Number(whole)) + (decimals ? '.' + decimals : ''),
+  };
 }
 
 function normalizeImage<T extends ImageFields>(image: T): T {
@@ -226,14 +236,25 @@ export class ProductEditorPage {
   }
 
   private variantForm(variant?: ProductDetail['variants'][number]) {
-    return this.fb.group({
+    const form = this.fb.group({
       id: variant?.id ?? '',
       sku: [variant?.sku ?? '', [nonblank, Validators.maxLength(100)]],
       variantName: [variant?.variantName ?? '', Validators.maxLength(150)],
       price: [variant?.price ?? '', [Validators.required, Validators.pattern(/^\d{1,10}(?:\.\d{1,2})?$/)]],
       stockQty: [variant?.stockQty ?? 0, integerBetween(4294967295)],
+      sellingMode: this.fb.control<SellingMode>(variant?.sellingMode ?? 'packaged'),
+      measurementUnit: this.fb.control<MeasurementUnit>(variant?.measurementUnit ?? 'pcs'),
+      measurementValue: [variant?.measurementValue ?? '1', [
+        Validators.required, Validators.pattern(/^\d{1,9}(?:\.\d{1,3})?$/), Validators.min(0.001),
+      ]],
       isActive: variant?.isActive ?? true,
     });
+    form.addValidators(() => {
+      const { sellingMode, measurementUnit, measurementValue } = form.getRawValue();
+      return measurementUnit === 'pcs' && (sellingMode !== 'packaged' || Number(measurementValue) % 1 !== 0)
+        ? { pieceMeasurement: true } : null;
+    });
+    return form;
   }
 
   private imageForm(image?: ProductDetail['images'][number]) {

@@ -422,7 +422,8 @@ describe('CMS authentication', () => {
     expect(request.request.withCredentials).toBeTrue();
     expect(request.request.body).toEqual({
       name: 'Cotton tee', description: null, isActive: true,
-      variants: [{ sku: 'TEE-S', variantName: null, price: '19.95', stockQty: 12, isActive: true }],
+      variants: [{ sku: 'TEE-S', variantName: null, price: '19.95', stockQty: 12, isActive: true,
+        sellingMode: 'packaged', measurementUnit: 'pcs', measurementValue: '1' }],
       images: [{ imageUrl: 'https://example.test/tee.png', altText: null, sortOrder: 0 }],
     });
     request.flush({ error: 'private database message' }, { status: 409, statusText: 'Conflict' });
@@ -462,7 +463,8 @@ describe('CMS authentication', () => {
     expect(update.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
     expect(update.request.body).toEqual({
       variants: [{ id: '100', stockQty: 9, isActive: false },
-        { sku: 'TEE-XL', variantName: null, price: '21', stockQty: 0, isActive: true }],
+        { sku: 'TEE-XL', variantName: null, price: '21', stockQty: 0, isActive: true,
+          sellingMode: 'packaged', measurementUnit: 'pcs', measurementValue: '1' }],
       images: [{ imageUrl: 'https://example.test/back.png', altText: null, sortOrder: 0 }],
       removeImageIds: ['200'],
     });
@@ -694,5 +696,37 @@ describe('CMS authentication', () => {
       .flush({ ...deliveryFixture, insideDhakaFee: '75.50', insideDhakaDeliveryDays: null });
     harness.detectChanges();
     expect(delivery.textContent).toContain('Delivery settings saved.');
+  });
+
+  it('validates and saves the variant selling mode and measurement', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/products/new');
+    const page = harness.routeNativeElement!;
+    clickText(page, 'Add variant');
+    harness.detectChanges();
+    setField(page, 'name', 'Loose dates');
+    setField(page, 'sku', 'DATES-LOOSE');
+    setField(page, 'price', '650');
+    setField(page, 'stockQty', '20');
+    const change = (field: string, value: string) => {
+      const select = page.querySelector<HTMLSelectElement>(`[formControlName=${field}]`)!;
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+    };
+    change('sellingMode', 'by_measure');
+    submitCatalogForm(page.querySelector('form')!);
+    harness.detectChanges();
+    expect(page.textContent).toContain('Pieces require packaged mode');
+    http.expectNone({ method: 'POST', url: catalogUrl });
+
+    change('measurementUnit', 'kg');
+    setField(page, 'measurementValue', '0.125');
+    submitCatalogForm(page.querySelector('form')!);
+    const request = http.expectOne({ method: 'POST', url: catalogUrl });
+    expect(request.request.body.variants[0]).toEqual({
+      sku: 'DATES-LOOSE', variantName: null, price: '650', stockQty: 20, isActive: true,
+      sellingMode: 'by_measure', measurementUnit: 'kg', measurementValue: '0.125',
+    });
+    request.flush({}, { status: 500, statusText: 'Server Error' });
   });
 });
