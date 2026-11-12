@@ -1,0 +1,27 @@
+<a mat-button routerLink="..">Back to AI settings</a>
+<h1>Gemini API key</h1>
+<mat-card appearance="outlined">
+  <mat-card-content>
+    @if (configured() === null) {
+      <p>{{ busy() ? 'Loading key status…' : 'Key status unavailable' }}</p>
+      @if (error()) { <button mat-button type="button" (click)="refresh()">Retry</button> }
+    } @else {
+      <p>{{ configured() ? 'Configured' : 'Not configured' }}</p>
+      <form [formGroup]="form" (ngSubmit)="save()" aria-label="Gemini API key">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ configured() ? 'Replacement API key' : 'API key' }}</mat-label>
+          <input matInput type="password" autocomplete="off" spellcheck="false" formControlName="key" />
+          @if (key.invalid && key.touched) { <mat-error>Enter a valid Gemini API key.</mat-error> }
+        </mat-form-field>
+        <div>
+          <button mat-flat-button type="submit" [disabled]="busy() || key.invalid">Save key</button>
+          @if (configured()) {
+            <button mat-button type="button" [disabled]="busy()" (click)="remove()">Remove key</button>
+          }
+        </div>
+      </form>
+    }
+    @if (success()) { <p role="status">{{ success() }}</p> }
+    @if (error()) { <p role="alert">{{ error() }}</p> }
+  </mat-card-content>
+</mat-card>

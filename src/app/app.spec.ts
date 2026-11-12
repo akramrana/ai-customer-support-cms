@@ -112,6 +112,69 @@ describe('CMS authentication', () => {
     await pending;
   }
 
+  it('manages the Gemini API key through the authenticated client without displaying it', async () => {
+    await restore(businessSession);
+    const url = '/api/business/gemini-key';
+    const harness = await RouterTestingHarness.create('/business-admin/ai-settings/gemini-key');
+    http.expectOne(url).flush({ configured: false });
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    expect(page.textContent).toContain('Not configured');
+    const input = page.querySelector<HTMLInputElement>('input[type=password]')!;
+    input.value = 'test-business-key-00000';
+    input.dispatchEvent(new Event('input'));
+    harness.detectChanges();
+    page.querySelector('form')!.dispatchEvent(new Event('submit'));
+    const save = http.expectOne({ method: 'PUT', url });
+    expect(save.request.body).toEqual({ apiKey: 'test-business-key-00000' });
+    expect(save.request.headers.get('X-CSRF-Token')).toBe('business-token');
+    save.flush({ configured: true });
+    harness.detectChanges();
+    expect(input.value).toBe('');
+    expect(page.textContent).not.toContain('test-business-key-00000');
+    spyOn(window, 'confirm').and.returnValue(true);
+    Array.from(page.querySelectorAll('button')).find(button => button.textContent?.includes('Remove key'))!.click();
+    http.expectOne({ method: 'DELETE', url }).flush({ configured: false });
+    harness.detectChanges();
+    expect(page.textContent).toContain('Not configured');
+  });
+
+  it('loads the order list and details and confirms through the authenticated client', async () => {
+    await restore(businessSession);
+    const base = '/api/business/orders';
+    const order = { id: '42', reference: 'ORD-42', customerName: 'Customer', phone: '+8801712345678',
+      status: 'pending_confirmation', total: '268.41', currency: 'BDT', createdAt: '2026-11-12T00:00:00Z' };
+    const detail = { ...order, address: 'Road 1', region: 'outside_dhaka', extraRequest: 'Call on arrival',
+      subtotal: '187.91', deliveryFee: '80.50', items: [{ id: '1', productName: 'Loose rice', sku: 'RICE',
+        requestedQuantity: '1.500', requestedUnit: 'kg', packages: null, unitPrice: '125.27', lineTotal: '187.91' }] };
+    const harness = await RouterTestingHarness.create('/business-admin/orders');
+    http.expectOne(base + '/pending-count').flush({ count: 1 });
+    const list = http.expectOne(request => request.url === base);
+    expect(list.request.params.get('page')).toBe('1');
+    list.flush({ items: [order], total: 1 });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('Awaiting review: 1');
+    expect(harness.routeNativeElement?.querySelector('a[href="/business-admin/orders/42"]')?.textContent).toContain('ORD-42');
+    await harness.navigateByUrl('/business-admin/orders/42');
+    http.expectOne(base + '/42').flush(detail);
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('1.500 kg');
+    const confirm = spyOn(window, 'confirm').and.returnValue(false);
+    const button = Array.from(harness.routeNativeElement!.querySelectorAll('button'))
+      .find(node => node.textContent?.includes('Confirm order'))!;
+    button.click();
+    http.expectNone(base + '/42/confirm');
+    confirm.and.returnValue(true);
+    button.click();
+    const action = http.expectOne({ method: 'POST', url: base + '/42/confirm' });
+    expect(action.request.withCredentials).toBeTrue();
+    expect(action.request.headers.get('X-CSRF-Token')).toBe('business-token');
+    action.flush({ status: 'confirmed' });
+    http.expectOne(base + '/42').flush({ ...detail, status: 'confirmed' });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('Confirmed');
+  });
+
   it('sends anonymous visitors to the appropriate sign-in page without a preview link', async () => {
     await restore(null);
     const harness = await RouterTestingHarness.create('/');
@@ -128,7 +191,7 @@ describe('CMS authentication', () => {
 
   for (const [path, session, sections] of [
     ['super-admin', superSession, ['businesses', 'users']],
-    ['business-admin', businessSession, ['products', 'inventory', 'conversations', 'orders', 'ai-settings']],
+    ['business-admin', businessSession, ['products', 'conversations', 'orders', 'ai-settings']],
   ] as const) {
     it(`restores the ${path} workspace and shows its feature routes`, async () => {
       await restore(session);
@@ -139,7 +202,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections.filter((name) => name !== 'ai-settings' && name !== 'products' && name !== 'conversations')) {
+      for (const section of sections.filter((name) => name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');

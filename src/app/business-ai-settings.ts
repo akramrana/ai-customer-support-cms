@@ -13,6 +13,8 @@ import { finalize, Observable } from 'rxjs';
 
 import { AiMode, AiSchedule, BusinessAiSettingsService } from './business-ai-settings.service';
 
+import { RouterLink } from '@angular/router';
+import { AuthService } from './auth.service';
 import { DeliverySettingsSection } from './delivery-settings';
 
 const defaultTimezone = 'Asia/Dhaka';
@@ -42,12 +44,13 @@ function errorDetail(error: unknown): string {
 @Component({
   imports: [
     ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule,
-    MatProgressBarModule, MatRadioModule, MatSlideToggleModule, DeliverySettingsSection,
+    MatProgressBarModule, MatRadioModule, MatSlideToggleModule, DeliverySettingsSection, RouterLink,
   ],
   templateUrl: './business-ai-settings.html',
   styleUrl: './business-ai-settings.scss',
 })
 export class BusinessAiSettingsPage {
+  protected readonly session = inject(AuthService).session;
   private readonly api = inject(BusinessAiSettingsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly forms = inject(FormBuilder).nonNullable;

@@ -41,6 +41,22 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
             ],
           };
         }
+        if (workspace.loginType === 'business' && section.path === 'ai-settings') {
+          return { path: 'ai-settings', children: [
+            { path: '', pathMatch: 'full', title: 'AI Settings | Messenger Support',
+              loadComponent: () => import('./business-ai-settings').then(module => module.BusinessAiSettingsPage) },
+            { path: 'gemini-key', title: 'Gemini API Key | Messenger Support',
+              loadComponent: () => import('./gemini-key-settings').then(module => module.GeminiKeySettingsPage) },
+          ] };
+        }
+        if (workspace.loginType === 'business' && section.path === 'orders') {
+          return { path: 'orders', children: [
+            { path: '', pathMatch: 'full', title: 'Orders | Messenger Support',
+              loadComponent: () => import('./order-list').then((module) => module.OrderListPage) },
+            { path: ':id', title: 'Order Details | Messenger Support',
+              loadComponent: () => import('./order-detail').then((module) => module.OrderDetailPage) },
+          ] };
+        }
         if (workspace.loginType === 'business' && section.path === 'conversations') {
           return {
             path: section.path,
@@ -52,9 +68,7 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
           path: section.path,
           title: `${section.label} | Messenger Support`,
           data: { section },
-          loadComponent: workspace.loginType === 'business' && section.path === 'ai-settings'
-            ? () => import('./business-ai-settings').then((module) => module.BusinessAiSettingsPage)
-            : () => import('./workspace-pages').then((module) => module.FeaturePage),
+          loadComponent: () => import('./workspace-pages').then((module) => module.FeaturePage),
         };
       }),
     ],

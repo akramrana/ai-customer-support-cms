@@ -107,4 +107,7 @@
   </div>
 }
 
+@if (session()?.business?.role === 'owner' || session()?.business?.role === 'admin') {
+  <a mat-stroked-button routerLink="gemini-key">Manage Gemini API key</a>
+}
 <app-delivery-settings />

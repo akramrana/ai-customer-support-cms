@@ -1,0 +1,18 @@
+.orders { width: 100%; min-width: 0; }
+.heading, .actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.heading { justify-content: space-between; margin-block: 0.75rem 1rem; }
+h1, h2 { margin-block: 0 0.5rem; }
+.heading p { margin: 0; color: var(--mat-sys-on-surface-variant); }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: start; }
+th, td { text-align: start; padding: 0.75rem; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+th { background: var(--mat-sys-surface-container); }
+tbody tr:hover { background: var(--mat-sys-surface-container-low); }
+.status { white-space: nowrap; padding: 0.2rem 0.5rem; border-radius: 1rem; background: var(--mat-sys-surface-container); }
+.customer { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+dt { font-weight: 600; }
+dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+small { display: block; color: var(--mat-sys-on-surface-variant); }
+.totals { margin-inline-start: auto; max-width: 22rem; }
+.totals div { display: flex; justify-content: space-between; gap: 1rem; padding-block: 0.4rem; }
+.totals div:last-child { border-top: 1px solid var(--mat-sys-outline-variant); font-weight: 700; }

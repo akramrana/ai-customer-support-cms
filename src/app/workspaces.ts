@@ -4,6 +4,7 @@ export interface Section {
   path: string;
   label: string;
   description: string;
+  hidden?: boolean;
 }
 
 export interface Workspace {
@@ -32,7 +33,7 @@ export const businessAdmin: Workspace = {
   description: 'Manage Messenger support and commerce for your business.',
   sections: [
     { path: 'products', label: 'Products', description: 'Manage your product catalog and variants.' },
-    { path: 'inventory', label: 'Inventory', description: 'Review stock levels and inventory movements.' },
+    { path: 'inventory', label: 'Inventory', hidden: true, description: 'Review stock levels and inventory movements.' },
     { path: 'conversations', label: 'Conversations', description: 'Review Messenger threads and support handoffs.' },
     { path: 'orders', label: 'Orders', description: 'Track customer orders and fulfillment.' },
     { path: 'ai-settings', label: 'AI Settings', description: 'Configure AI reply modes and schedules.' },

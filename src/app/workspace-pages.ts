@@ -13,14 +13,16 @@ import { Section, Workspace } from './workspaces';
     </header>
     <nav class="section-grid" aria-label="Workspace sections">
       @for (section of workspace.sections; track section.path) {
-        <a class="section-link" [routerLink]="['..', section.path]">
-          <mat-card appearance="outlined">
-            <mat-card-content>
-              <h2>{{ section.label }} <span aria-hidden="true">↗</span></h2>
-              <p>{{ section.description }}</p>
-            </mat-card-content>
-          </mat-card>
-        </a>
+        @if (!section.hidden) {
+          <a class="section-link" [routerLink]="['..', section.path]">
+            <mat-card appearance="outlined">
+              <mat-card-content>
+                <h2>{{ section.label }} <span aria-hidden="true">↗</span></h2>
+                <p>{{ section.description }}</p>
+              </mat-card-content>
+            </mat-card>
+          </a>
+        }
       }
     </nav>
   `,
