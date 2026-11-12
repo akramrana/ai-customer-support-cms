@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,6 +11,7 @@ import { RouterLink } from '@angular/router';
 import { finalize, Observable } from 'rxjs';
 
 type KeyStatus = { configured: boolean };
+const maxKeyLength = 200;
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule],
@@ -25,8 +26,14 @@ export class GeminiKeySettingsPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
-  protected readonly key = new FormControl('', { nonNullable: true,
-    validators: [Validators.required, Validators.pattern(/^[A-Za-z0-9_-]{20,200}$/)] });
+  protected readonly key = new FormControl('', {
+    nonNullable: true,
+    validators: [control => {
+      const length = control.value.trim().length;
+      if (!length) return { required: true };
+      return length > maxKeyLength ? { maxlength: true } : null;
+    }],
+  });
 
   protected readonly form = new FormGroup({ key: this.key });
 
@@ -38,7 +45,7 @@ export class GeminiKeySettingsPage {
 
   protected save(): void {
     if (this.key.invalid || this.busy()) return;
-    const apiKey = this.key.value;
+    const apiKey = this.key.value.trim();
     this.key.reset();
     this.run(this.http.put<KeyStatus>(this.url, { apiKey }), 'Gemini API key saved.');
   }

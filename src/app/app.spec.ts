@@ -121,17 +121,26 @@ describe('CMS authentication', () => {
     const page = harness.routeNativeElement!;
     expect(page.textContent).toContain('Not configured');
     const input = page.querySelector<HTMLInputElement>('input[type=password]')!;
-    input.value = 'test-business-key-00000';
+    const saveButton = page.querySelector<HTMLButtonElement>('button[type=submit]')!;
+    for (const invalid of ['   ', 'x'.repeat(201)]) {
+      input.value = invalid;
+      input.dispatchEvent(new Event('input'));
+      harness.detectChanges();
+      expect(saveButton.disabled).toBeTrue();
+      http.expectNone({ method: 'PUT', url });
+    }
+    input.value = '  test.key+/=  ';
     input.dispatchEvent(new Event('input'));
     harness.detectChanges();
-    page.querySelector('form')!.dispatchEvent(new Event('submit'));
+    expect(saveButton.disabled).toBeFalse();
+    saveButton.click();
     const save = http.expectOne({ method: 'PUT', url });
-    expect(save.request.body).toEqual({ apiKey: 'test-business-key-00000' });
+    expect(save.request.body).toEqual({ apiKey: 'test.key+/=' });
     expect(save.request.headers.get('X-CSRF-Token')).toBe('business-token');
     save.flush({ configured: true });
     harness.detectChanges();
     expect(input.value).toBe('');
-    expect(page.textContent).not.toContain('test-business-key-00000');
+    expect(page.textContent).not.toContain('test.key+/=');
     spyOn(window, 'confirm').and.returnValue(true);
     Array.from(page.querySelectorAll('button')).find(button => button.textContent?.includes('Remove key'))!.click();
     http.expectOne({ method: 'DELETE', url }).flush({ configured: false });
