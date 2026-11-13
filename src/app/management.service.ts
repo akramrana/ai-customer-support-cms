@@ -21,6 +21,10 @@ export class ManagementService {
     return this.http.get<Business>(this.businessesUrl + '/' + id);
   }
 
+  setBusinessStatus(id: string, isActive: boolean) {
+    return this.http.patch<Business>(this.businessesUrl + '/' + id + '/status', { isActive });
+  }
+
   saveBusiness(input: Omit<Business, 'id'> & {
     administrator?: { name: string; email: string; password: string };
   }, id?: string) {

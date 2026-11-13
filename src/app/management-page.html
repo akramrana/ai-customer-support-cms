@@ -15,6 +15,8 @@
   </div>
 </header>
 
+@if (saving()) { <p role="status">Saving changes…</p> }
+@if (error() && !editor()) { <p class="error" role="alert">{{ error() }}</p> }
 @if (message()) { <p role="status">{{ message() }}</p> }
 @if (editor(); as action) {
   <form class="editor" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="saving()">
@@ -114,6 +116,9 @@
       <div>
         @if ('slug' in row) {
           @if (mode === 'businesses') {
+            <button mat-button type="button" [disabled]="saving()" (click)="changeStatus(row)">
+              {{ row.isActive ? 'Deactivate business' : 'Activate business' }}
+            </button>
             <a mat-button [routerLink]="['/super-admin/businesses', row.id]">View details</a>
             <button mat-button type="button" [disabled]="saving()" (click)="open('business', row)">Edit</button>
             <a mat-button [routerLink]="['/super-admin/administrators', row.id]">View administrators</a>
@@ -122,6 +127,14 @@
             <a mat-button [routerLink]="['/super-admin', mode, row.id]">Open {{ mode }}</a>
           }
         } @else if (platform || row.role !== 'owner') {
+          <button mat-button type="button" [disabled]="saving()" (click)="changeStatus(row)">
+            {{ row.isActive ? 'Deactivate membership' : 'Activate membership' }}
+          </button>
+          @if (platform && mode === 'users') {
+            <button mat-button type="button" [disabled]="saving()" (click)="changeStatus(row, true)">
+              {{ row.accountActive ? 'Deactivate account' : 'Activate account' }}
+            </button>
+          }
           <button mat-button type="button" [disabled]="saving()" (click)="open('user', row)">Edit</button>
           @if (platform) {
             <button mat-button type="button" [disabled]="saving()" (click)="open('reset', row)">Reset password</button>

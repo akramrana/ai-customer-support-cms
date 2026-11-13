@@ -25,6 +25,10 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         data: { workspace },
         loadComponent: () => import('./workspace-pages').then((module) => module.DashboardPage),
       },
+      ...(workspace.loginType === 'super-admin' ? [
+        { path: 'business-administrators', pathMatch: 'full' as const, redirectTo: 'administrators' },
+        { path: 'business-administrators/:businessId', redirectTo: 'administrators/:businessId' },
+      ] : []),
       ...workspace.sections.map((section): Route => {
         if (section.path === 'ai-usage') {
           return { path: section.path, title: 'AI Usage | Messenger Support',

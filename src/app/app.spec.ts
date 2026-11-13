@@ -320,6 +320,28 @@ describe('CMS authentication', () => {
     http.expectNone(req => req.url === '/api/platform/facebook-pages');
   });
 
+  it('confirms business deactivation and refreshes only after a successful status change', async () => {
+    await restore(superSession);
+    const url = '/api/platform/businesses';
+    const business = { id: '50', name: 'Shop', slug: 'shop', isActive: true };
+    const harness = await RouterTestingHarness.create('/super-admin/businesses');
+    http.expectOne(req => req.url === url).flush(chatPage([business], 1, 1));
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    const confirm = spyOn(window, 'confirm').and.returnValue(false);
+    clickText(page, 'Deactivate business');
+    http.expectNone(url + '/50/status');
+    confirm.and.returnValue(true);
+    clickText(page, 'Deactivate business');
+    const patch = http.expectOne({ method: 'PATCH', url: url + '/50/status' });
+    expect(patch.request.body).toEqual({ isActive: false });
+    expect(patch.request.headers.get('X-CSRF-Token')).toBe(superSession.csrfToken);
+    patch.flush({ ...business, isActive: false });
+    http.expectOne(req => req.url === url).flush(chatPage([{ ...business, isActive: false }], 1, 1));
+    harness.detectChanges();
+    expect(page.textContent).toContain('Activate business');
+  });
+
   it('creates a business with its initial owner through the platform form', async () => {
     await restore(superSession);
     const url = '/api/platform/businesses';

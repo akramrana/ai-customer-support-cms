@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -24,6 +25,7 @@ function passwordValidator(minimumLength: () => number): ValidatorFn {
   styleUrl: './product-catalog.scss',
 })
 export class ManagementPage {
+  private readonly window = inject(DOCUMENT).defaultView;
   private readonly api = inject(ManagementService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);
@@ -120,6 +122,22 @@ export class ManagementPage {
     return this.editor() === 'reset' ? 12 : 6;
   }
 
+  protected changeStatus(row: Business | Member, global = false): void {
+    const member = 'role' in row;
+    const active = member && global ? row.accountActive : row.isActive;
+    if (!this.confirmStatus(active, row.name, global)) return;
+    const request = member ? this.api.saveUser(this.businessId,
+      global ? { accountActive: !active } : { isActive: !active }, row.id)
+      : this.api.setBusinessStatus(row.id, !active);
+    this.submit(request, 'Status updated.');
+  }
+
+  private confirmStatus(active: boolean, name: string, global = false): boolean {
+    return !this.saving() && (!active || !!this.window?.confirm(global
+      ? 'Deactivate ' + name + ' across all businesses?'
+      : 'Deactivate ' + name + '?'));
+  }
+
   protected save(): void {
     if (this.saving()) return;
     this.error.set('');
@@ -170,13 +188,24 @@ export class ManagementPage {
       }, id);
     } else return;
 
+    const row = this.selected();
+    if (row && (mode === 'business' || mode === 'user')) {
+      const global = 'accountActive' in row && this.platform && row.accountActive && !values.accountActive;
+      if ((global || (row.isActive && !values.isActive)) && !this.confirmStatus(true, row.name, global)) return;
+    }
+    this.submit(request, mode === 'reset' ? 'Password reset. Existing sessions are revoked.' : 'Changes saved.');
+  }
+
+  private submit(request: Observable<unknown>, message: string): void {
+    this.error.set('');
+    this.message.set('');
     this.saving.set(true);
     this.form.disable();
     request.pipe(finalize(() => { this.form.enable(); this.saving.set(false); }),
       takeUntilDestroyed(this.destroy)).subscribe({
       next: () => {
         this.close();
-        this.message.set(mode === 'reset' ? 'Password reset. Existing sessions are revoked.' : 'Changes saved.');
+        this.message.set(message);
         this.reload();
       },
       error: error => this.error.set(this.errorText(error, 'Unable to save changes.')),
