@@ -1,0 +1,141 @@
+<header class="page-heading heading-row">
+  <div>
+    <h1>{{ title }}</h1>
+    @if (business(); as current) { <p>{{ current.name }} · {{ current.slug }}</p> }
+  </div>
+  <div>
+    @if (mode === 'businesses') {
+      <button mat-flat-button type="button" [disabled]="saving()" (click)="open('business')">Add business</button>
+    } @else if (!showBusinesses) {
+      <button mat-flat-button type="button" [disabled]="saving()" (click)="open('user')">Add {{ mode === 'administrators' ? 'administrator' : 'user' }}</button>
+      @if (platform) {
+        <button mat-button type="button" [disabled]="saving()" (click)="open('assign')">Assign existing user</button>
+      }
+    }
+  </div>
+</header>
+
+@if (message()) { <p role="status">{{ message() }}</p> }
+@if (editor(); as action) {
+  <form class="editor" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="saving()">
+    <div class="fields">
+      @if (action === 'business' || action === 'user') {
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label><input matInput formControlName="name" required>
+        </mat-form-field>
+      }
+      @if (action === 'business') {
+        <mat-form-field appearance="outline">
+          <mat-label>Slug</mat-label><input matInput formControlName="slug" required>
+        </mat-form-field>
+        <label><input type="checkbox" formControlName="isActive"> Business active</label>
+        @if (!selected()) {
+          <label><input type="checkbox" formControlName="onboarding"> Create initial business owner</label>
+          @if (form.controls.onboarding.value) {
+            <mat-form-field appearance="outline">
+              <mat-label>Owner name</mat-label><input matInput formControlName="administratorName" required>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Owner email</mat-label><input matInput type="email" formControlName="administratorEmail" required>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Initial password</mat-label>
+              <input matInput type="password" autocomplete="new-password" formControlName="administratorPassword" required>
+              <mat-error>
+                @if (form.controls.administratorPassword.hasError('required')) { Enter an initial password. }
+                @else if (form.controls.administratorPassword.hasError('tooShort')) { Use at least 6 characters. }
+                @else { Use at most 72 UTF-8 bytes. }
+              </mat-error>
+            </mat-form-field>
+          }
+        }
+      }
+      @if (action === 'user' || action === 'assign') {
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label><input matInput type="email" formControlName="email" required>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Business role</mat-label>
+          <select matNativeControl formControlName="role">
+            @for (role of roles; track role) { <option [value]="role">{{ role }}</option> }
+          </select>
+        </mat-form-field>
+        @if (action === 'user' && selected()) {
+          <label><input type="checkbox" formControlName="isActive"> Membership active</label>
+          @if (platform) {
+            <label><input type="checkbox" formControlName="accountActive"> Account active across businesses</label>
+          }
+        }
+      }
+      @if (action === 'reset' || (action === 'user' && !selected())) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ action === 'reset' ? 'New password' : 'Initial password' }}</mat-label>
+          <input matInput type="password" autocomplete="new-password" formControlName="password" required>
+          <mat-error>
+            @if (form.controls.password.hasError('required')) { Enter a password. }
+            @else if (form.controls.password.hasError('tooShort')) { Use at least {{ passwordMinimum() }} characters. }
+            @else { Use at most 72 UTF-8 bytes. }
+          </mat-error>
+        </mat-form-field>
+      }
+    </div>
+    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    <div>
+      <button mat-flat-button type="submit" [disabled]="saving()">Save</button>
+      <button mat-button type="button" [disabled]="saving()" (click)="close()">Cancel</button>
+    </div>
+  </form>
+}
+
+<form class="fields" (submit)="$event.preventDefault(); searchList()">
+  <mat-form-field appearance="outline">
+    <mat-label>Search by name</mat-label><input matInput type="search" [formControl]="search" maxlength="255">
+  </mat-form-field>
+  <div><button mat-stroked-button type="submit">Search</button></div>
+</form>
+
+@if (loading()) {
+  <p role="status">Loading…</p>
+} @else if (loadError()) {
+  <p class="error" role="alert">{{ loadError() }}</p>
+  <button mat-button type="button" (click)="reload()">Retry</button>
+} @else if (result(); as list) {
+  @for (row of list.items; track row.id) {
+    <article class="entry section-heading">
+      <div>
+        <strong>{{ row.name }}</strong>
+        @if ('slug' in row) {
+          <p>{{ row.slug }} · {{ row.isActive ? 'Active' : 'Inactive' }}</p>
+        } @else {
+          <p>{{ row.email }} · {{ row.role }} · {{ row.isActive ? 'Active membership' : 'Inactive membership' }}</p>
+          @if (!row.accountActive) { <p>Account disabled</p> }
+        }
+      </div>
+      <div>
+        @if ('slug' in row) {
+          @if (mode === 'businesses') {
+            <button mat-button type="button" [disabled]="saving()" (click)="open('business', row)">Edit</button>
+            <a mat-button [routerLink]="['/super-admin/administrators', row.id]">View administrators</a>
+            <a mat-button [routerLink]="['/super-admin/users', row.id]">View users</a>
+          } @else {
+            <a mat-button [routerLink]="['/super-admin', mode, row.id]">Open {{ mode }}</a>
+          }
+        } @else if (platform || row.role !== 'owner') {
+          <button mat-button type="button" [disabled]="saving()" (click)="open('user', row)">Edit</button>
+          @if (platform) {
+            <button mat-button type="button" [disabled]="saving()" (click)="open('reset', row)">Reset password</button>
+          }
+        }
+      </div>
+    </article>
+  } @empty {
+    <p>No records found.</p>
+  }
+  @if (list.total > list.pageSize) {
+    <div>
+      <button mat-button type="button" [disabled]="page() <= 1" (click)="turnPage(page() - 1)">Previous</button>
+      <span>Page {{ page() }}</span>
+      <button mat-button type="button" [disabled]="page() * list.pageSize >= list.total" (click)="turnPage(page() + 1)">Next</button>
+    </div>
+  }
+}

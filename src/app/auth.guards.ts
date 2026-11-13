@@ -28,6 +28,14 @@ export function requireWorkspace(type: LoginType): CanActivateFn {
   };
 }
 
+export const requireBusinessOwner: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return auth.session()?.business?.role === 'owner' || router.createUrlTree(['/business-admin/dashboard'], {
+    queryParams: { notice: 'forbidden' },
+  });
+};
+
 export const redirectSignedIn: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);

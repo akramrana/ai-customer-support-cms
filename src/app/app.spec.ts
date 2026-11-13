@@ -199,8 +199,8 @@ describe('CMS authentication', () => {
   });
 
   for (const [path, session, sections] of [
-    ['super-admin', superSession, ['businesses', 'users']],
-    ['business-admin', businessSession, ['products', 'brands', 'categories', 'conversations', 'orders', 'ai-settings']],
+    ['super-admin', superSession, ['businesses', 'administrators', 'users']],
+    ['business-admin', businessSession, ['products', 'brands', 'categories', 'conversations', 'users', 'orders', 'ai-settings']],
   ] as const) {
     it(`restores the ${path} workspace and shows its feature routes`, async () => {
       await restore(session);
@@ -211,7 +211,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections.filter((name) => name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
+      for (const section of sections.filter((name) => !['businesses', 'administrators', 'users'].includes(name) && name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');
@@ -242,6 +242,47 @@ describe('CMS authentication', () => {
       expect(router.url).toBe(`/${path}/dashboard`);
     });
   }
+
+  it('creates a business with its initial owner through the platform form', async () => {
+    await restore(superSession);
+    const url = '/api/platform/businesses';
+    const harness = await RouterTestingHarness.create('/super-admin/businesses');
+    http.expectOne(req => req.url === url).flush(chatPage([], 1, 0));
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    clickText(page, 'Add business');
+    harness.detectChanges();
+    setField(page, 'name', 'New Business');
+    setField(page, 'slug', 'new-business');
+    page.querySelector<HTMLInputElement>('[formControlName=onboarding]')!.click();
+    harness.detectChanges();
+    setField(page, 'administratorName', 'Initial Owner');
+    setField(page, 'administratorEmail', 'owner@example.test');
+    setField(page, 'administratorPassword', 'abc12');
+    submitCatalogForm(page.querySelector('form')!);
+    harness.detectChanges();
+    http.expectNone({ method: 'POST', url });
+    expect(page.querySelector('mat-error')?.textContent).toContain('Use at least 6 characters.');
+    setField(page, 'administratorPassword', 'abc123');
+    submitCatalogForm(page.querySelector('form')!);
+    const request = http.expectOne({ method: 'POST', url });
+    expect(request.request.headers.get('X-CSRF-Token')).toBe(superSession.csrfToken);
+    expect(request.request.body).toEqual({ name: 'New Business', slug: 'new-business', isActive: true,
+      administrator: { name: 'Initial Owner', email: 'owner@example.test', password: 'abc123' } });
+    request.flush({ id: '50', name: 'New Business', slug: 'new-business', isActive: true });
+    http.expectOne(req => req.url === url).flush(chatPage([{ id: '50', name: 'New Business', slug: 'new-business', isActive: true }], 1, 1));
+    harness.detectChanges();
+    expect(page.textContent).toContain('New Business');
+    expect(page.querySelector('a[href="/super-admin/administrators/50"]')).not.toBeNull();
+    expect(page.querySelector('input[type=password]')).toBeNull();
+  });
+
+  it('hides user management from a business admin without owner permissions', async () => {
+    await restore({ ...businessSession, business: { ...businessSession.business!, role: 'admin' } });
+    const harness = await RouterTestingHarness.create('/business-admin/users');
+    expect(router.url).toBe('/business-admin/dashboard?notice=forbidden');
+    expect(harness.routeNativeElement?.querySelector('a[href="/business-admin/users"]')).toBeNull();
+  });
 
   it('redirects a business user away from Super Admin routes', async () => {
     await restore(businessSession);

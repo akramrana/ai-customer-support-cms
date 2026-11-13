@@ -5,6 +5,7 @@ export interface Section {
   label: string;
   description: string;
   hidden?: boolean;
+  ownerOnly?: boolean;
 }
 
 export interface Workspace {
@@ -22,7 +23,8 @@ export const superAdmin: Workspace = {
   description: 'Manage businesses and administrator access across the platform.',
   sections: [
     { path: 'businesses', label: 'Businesses', description: 'Manage business profiles and status.' },
-    { path: 'users', label: 'Users', description: 'Manage business administrators and assignments.' },
+    { path: 'administrators', label: 'Business Administrators', description: 'Manage business owners and administrators.' },
+    { path: 'users', label: 'Users', description: 'Manage business user accounts and assignments.' },
   ],
 };
 
@@ -37,6 +39,7 @@ export const businessAdmin: Workspace = {
     { path: 'categories', label: 'Categories', description: 'Manage product categories.' },
     { path: 'inventory', label: 'Inventory', hidden: true, description: 'Review stock levels and inventory movements.' },
     { path: 'conversations', label: 'Conversations', description: 'Review Messenger threads and support handoffs.' },
+    { path: 'users', label: 'Users', description: 'Manage users in your business.', ownerOnly: true },
     { path: 'orders', label: 'Orders', description: 'Track customer orders and fulfillment.' },
     { path: 'ai-settings', label: 'AI Settings', description: 'Configure AI reply modes and schedules.' },
   ],

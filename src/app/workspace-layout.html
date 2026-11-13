@@ -10,7 +10,7 @@
         [activated]="dashboardLink.isActive" ariaCurrentWhenActive="page"
         (click)="compact() && sidebar.close()">Dashboard</a>
       @for (section of workspace.sections; track section.path) {
-        @if (!section.hidden) {
+        @if (!section.hidden && (!section.ownerOnly || auth.session()?.business?.role === 'owner')) {
           <a mat-list-item [routerLink]="section.path" routerLinkActive #sectionLink="routerLinkActive"
             [activated]="sectionLink.isActive" ariaCurrentWhenActive="page"
             (click)="compact() && sidebar.close()">{{ section.label }}</a>

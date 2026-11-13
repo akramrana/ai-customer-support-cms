@@ -1,6 +1,6 @@
 import { Route, Routes } from '@angular/router';
 
-import { redirectSignedIn, requireWorkspace } from './auth.guards';
+import { redirectSignedIn, requireBusinessOwner, requireWorkspace } from './auth.guards';
 import { businessAdmin, superAdmin, Workspace } from './workspaces';
 
 const productEditor: Route = {
@@ -26,6 +26,16 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         loadComponent: () => import('./workspace-pages').then((module) => module.DashboardPage),
       },
       ...workspace.sections.map((section): Route => {
+        if (['businesses', 'administrators', 'users'].includes(section.path)) {
+          const page = {
+            title: section.label + ' | Messenger Support',
+            data: { management: workspace.loginType === 'business' ? 'tenant' : section.path },
+            loadComponent: () => import('./management-page').then(module => module.ManagementPage),
+          };
+          return workspace.loginType === 'super-admin' && section.path !== 'businesses'
+            ? { path: section.path, children: [{ path: '', ...page }, { path: ':businessId', ...page }] }
+            : { path: section.path, ...page, ...(section.ownerOnly ? { canActivate: [requireBusinessOwner] } : {}) };
+        }
         if (workspace.loginType === 'business' && ['brands', 'categories'].includes(section.path)) {
           return {
             path: section.path,

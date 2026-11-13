@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
+import { AuthService } from './auth.service';
 import { Section, Workspace } from './workspaces';
 
 @Component({
@@ -13,7 +14,7 @@ import { Section, Workspace } from './workspaces';
     </header>
     <nav class="section-grid" aria-label="Workspace sections">
       @for (section of workspace.sections; track section.path) {
-        @if (!section.hidden) {
+        @if (!section.hidden && (!section.ownerOnly || auth.session()?.business?.role === 'owner')) {
           <a class="section-link" [routerLink]="['..', section.path]">
             <mat-card appearance="outlined">
               <mat-card-content>
@@ -42,6 +43,7 @@ import { Section, Workspace } from './workspaces';
   `,
 })
 export class DashboardPage {
+  protected readonly auth = inject(AuthService);
   protected readonly workspace: Workspace = inject(ActivatedRoute).snapshot.data['workspace'];
 }
 
