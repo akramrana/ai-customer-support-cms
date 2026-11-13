@@ -25,8 +25,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(request.clone({ withCredentials: true, headers })).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Auth endpoints handle their own errors. Ignore responses from a replaced session.
-      if (!url.pathname.startsWith('/api/auth/') && session && auth.session() === session) {
+      // Ignore responses from a replaced session. Login and logout handle their own errors.
+      const checksSession = url.pathname.replace(/\/$/, '') === '/api/auth/me';
+      if ((!url.pathname.startsWith('/api/auth/') || checksSession) && session && auth.session() === session) {
         if (error.status === 401) {
           auth.clearSession();
           void router.navigate(['/', workspaceFor(session.loginType).path, 'login'], {

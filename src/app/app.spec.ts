@@ -400,6 +400,18 @@ describe('CMS authentication', () => {
     expect(router.url).toBe('/business-admin/login');
   });
 
+  it('clears the current session when the server rejects a session check', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/dashboard');
+    const client = TestBed.inject(HttpClient);
+    const check = firstValueFrom(client.get('/api/auth/me')).catch(error => error.status);
+    http.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(await check).toBe(401);
+    await harness.fixture.whenStable();
+    expect(auth.session()).toBeNull();
+    expect(router.url).toBe('/business-admin/login?notice=expired');
+  });
+
   it('keeps the session on 403 and returns to sign-in when a protected API returns 401', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/dashboard');

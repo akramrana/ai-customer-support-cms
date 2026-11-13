@@ -55,7 +55,8 @@ export class LoginPage {
       const response = error instanceof HttpErrorResponse ? error : undefined;
       const apiError: AuthApiError | undefined = response?.error;
       const message = typeof apiError?.error === 'string' ? apiError.error : '';
-      this.error.set(message || 'Unable to sign in. Try again shortly.');
+      this.error.set(response?.status === 401 ? 'Invalid credentials or access unavailable.'
+        : message || 'Unable to sign in. Try again shortly.');
     } finally {
       this.form.controls.password.reset();
       this.submitting.set(false);
