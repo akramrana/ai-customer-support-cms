@@ -1,0 +1,54 @@
+@if (businessId()) {
+  <h2>Facebook Pages</h2>
+} @else {
+  <header class="page-heading"><h1>Facebook Pages</h1></header>
+}
+
+<form class="fields" (submit)="$event.preventDefault(); applySearch()">
+  <mat-form-field appearance="outline">
+    <mat-label>Search by Page ID, Page name, or business</mat-label>
+    <input matInput type="search" maxlength="255" [formControl]="search">
+  </mat-form-field>
+  <div><button mat-stroked-button type="submit">Search</button></div>
+</form>
+@if (statusError()) { <p role="alert" class="error">{{ statusError() }}</p> }
+@if (loading()) {
+  <p role="status">Loading Facebook Pages…</p>
+} @else if (error()) {
+  <p role="alert" class="error">{{ error() }}</p>
+  <button mat-button type="button" (click)="load()">Retry</button>
+} @else if (result(); as list) {
+  @if (list.items.length) {
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Connected Facebook Pages">
+      <table>
+        <thead><tr>
+          <th scope="col">Business</th><th scope="col">Page Name</th><th scope="col">Page ID</th>
+          <th scope="col">Status</th><th scope="col">Connected At</th>
+        </tr></thead>
+        <tbody>
+          @for (row of list.items; track row.id) {
+            <tr>
+              <td><a [routerLink]="['/super-admin/businesses', row.business_id]">{{ row.business_name }}</a></td>
+              <td>{{ row.page_name || 'Unnamed Page' }}</td>
+              <td>{{ row.page_id }}</td>
+              <td>
+                <button mat-button type="button" role="switch" [attr.aria-checked]="row.is_active"
+                  [attr.aria-label]="'Automation for Page ' + (row.page_name || row.page_id)"
+                  [disabled]="saving() !== null" (click)="toggle(row)">
+                  {{ saving() === row.id ? 'Saving…' : row.is_active ? 'Active' : 'Inactive' }}
+                </button>
+              </td>
+              <td>{{ row.connected_at | date:'medium' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p role="status">{{ search.value.trim() ? 'No Facebook Pages match your search.' : 'No Facebook Pages connected.' }}</p>
+  }
+  @if (list.total) {
+    <mat-paginator [length]="list.total" [pageIndex]="list.page - 1" [pageSize]="list.pageSize"
+      [pageSizeOptions]="[10, 20, 50]" (page)="paginate($event)" aria-label="Facebook Page results" />
+  }
+}

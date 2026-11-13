@@ -199,8 +199,8 @@ describe('CMS authentication', () => {
   });
 
   for (const [path, session, sections] of [
-    ['super-admin', superSession, ['businesses', 'administrators', 'users']],
-    ['business-admin', businessSession, ['products', 'brands', 'categories', 'conversations', 'users', 'orders', 'ai-settings']],
+    ['super-admin', superSession, ['businesses', 'ai-usage', 'facebook-pages', 'administrators', 'users']],
+    ['business-admin', businessSession, ['products', 'brands', 'categories', 'conversations', 'users', 'orders', 'ai-usage', 'ai-settings']],
   ] as const) {
     it(`restores the ${path} workspace and shows its feature routes`, async () => {
       await restore(session);
@@ -211,7 +211,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections.filter((name) => !['businesses', 'administrators', 'users'].includes(name) && name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
+      for (const section of sections.filter((name) => !['businesses', 'ai-usage', 'facebook-pages', 'administrators', 'users'].includes(name) && name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');
@@ -242,6 +242,83 @@ describe('CMS authentication', () => {
       expect(router.url).toBe(`/${path}/dashboard`);
     });
   }
+
+  for (const platform of [true, false]) {
+    it('loads AI usage with filters for the ' + (platform ? 'platform' : 'business'), async () => {
+      await restore(platform ? superSession : businessSession);
+      const scope = platform ? 'platform' : 'business';
+      const url = '/api/' + scope + '/ai-usage';
+      const harness = await RouterTestingHarness.create(platform ? '/super-admin/ai-usage' : '/business-admin/ai-usage');
+      if (platform) http.expectOne(req => req.url === '/api/platform/businesses').flush(chatPage([
+        { id: '9', name: 'Test Business', slug: 'test', isActive: true },
+      ], 1, 1));
+      const request = http.expectOne(req => req.url === url);
+      expect(request.request.params.has('businessId')).toBeFalse();
+      const metrics = { totalCalls: 2, successfulCalls: 1, failedCalls: 1, inputTokens: 80, outputTokens: 20, averageLatencyMs: 100 };
+      const data = { ...metrics, from: '2026-11-01', to: '2026-11-01', daily: [{ date: '2026-11-01', ...metrics }],
+        recentErrors: [{ code: 'network_error', calls: 1, lastSeen: '2026-11-01T12:00:00Z' }] };
+      request.flush(data);
+      harness.detectChanges();
+      const page = harness.routeNativeElement!;
+      expect(page.textContent).toContain('50%');
+      expect(page.textContent).toContain('80 input');
+      expect(page.textContent).toContain('network error');
+      const select = page.querySelector('select');
+      if (platform) {
+        select!.value = '9';
+        select!.dispatchEvent(new Event('change'));
+      } else expect(select).toBeNull();
+      setField(page, 'from', '2026-11-01');
+      setField(page, 'to', '2026-11-01');
+      submitCatalogForm(page.querySelector('form')!);
+      const filtered = http.expectOne(req => req.url === url);
+      expect(filtered.request.params.get('from')).toBe('2026-11-01');
+      expect(filtered.request.params.get('businessId')).toBe(platform ? '9' : null);
+      filtered.flush(data);
+    });
+  }
+
+  it('lists Facebook Pages, confirms deactivation, and opens the business detail', async () => {
+    await restore(superSession);
+    const url = '/api/platform/facebook-pages';
+    const row = { id: '9', business_id: '50', business_name: 'Business', page_id: '123',
+      page_name: 'Shop Page', is_active: true, connected_at: '2026-11-01T00:00:00Z' };
+    const harness = await RouterTestingHarness.create('/super-admin/facebook-pages');
+    http.expectOne(req => req.url === url).flush(chatPage([row], 1, 1));
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    const toggle = page.querySelector<HTMLButtonElement>('button[role=switch]')!;
+    const confirm = spyOn(window, 'confirm').and.returnValue(false);
+    toggle.click();
+    http.expectNone({ method: 'PATCH', url: url + '/9/status' });
+    confirm.and.returnValue(true);
+    toggle.click();
+    const update = http.expectOne({ method: 'PATCH', url: url + '/9/status' });
+    expect(update.request.headers.get('X-CSRF-Token')).toBe(superSession.csrfToken);
+    expect(update.request.body).toEqual({ is_active: false });
+    update.flush({ ...row, is_active: false });
+    harness.detectChanges();
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    toggle.click();
+    http.expectOne({ method: 'PATCH', url: url + '/9/status' })
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    harness.detectChanges();
+    expect(page.textContent).toContain('Unable to change the Page status');
+    const businessLink = page.querySelector('a[href="/super-admin/businesses/50"]')!;
+    await harness.navigateByUrl(businessLink.getAttribute('href')!);
+    http.expectOne('/api/platform/businesses/50').flush({ id: '50', name: 'Business', slug: 'business', isActive: true });
+    harness.detectChanges();
+    http.expectOne(req => req.url === '/api/platform/businesses/50/facebook-pages').flush(chatPage([], 1, 0));
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('No Facebook Pages connected.');
+  });
+
+  it('denies Business Admin access to the platform Facebook Pages page', async () => {
+    await restore(businessSession);
+    await RouterTestingHarness.create('/super-admin/facebook-pages');
+    expect(router.url).toBe('/business-admin/dashboard?notice=forbidden');
+    http.expectNone(req => req.url === '/api/platform/facebook-pages');
+  });
 
   it('creates a business with its initial owner through the platform form', async () => {
     await restore(superSession);

@@ -23,6 +23,8 @@ export const superAdmin: Workspace = {
   description: 'Manage businesses and administrator access across the platform.',
   sections: [
     { path: 'businesses', label: 'Businesses', description: 'Manage business profiles and status.' },
+    { path: 'ai-usage', label: 'AI Usage', description: 'Review provider calls, tokens, and errors across businesses.' },
+    { path: 'facebook-pages', label: 'Facebook Pages', description: 'View connected Pages and manage Messenger automation.' },
     { path: 'administrators', label: 'Business Administrators', description: 'Manage business owners and administrators.' },
     { path: 'users', label: 'Users', description: 'Manage business user accounts and assignments.' },
   ],
@@ -41,6 +43,7 @@ export const businessAdmin: Workspace = {
     { path: 'conversations', label: 'Conversations', description: 'Review Messenger threads and support handoffs.' },
     { path: 'users', label: 'Users', description: 'Manage users in your business.', ownerOnly: true },
     { path: 'orders', label: 'Orders', description: 'Track customer orders and fulfillment.' },
+    { path: 'ai-usage', label: 'AI Usage', description: 'Review provider calls, tokens, and errors for your business.' },
     { path: 'ai-settings', label: 'AI Settings', description: 'Configure AI reply modes and schedules.' },
   ],
 };

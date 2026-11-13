@@ -26,13 +26,28 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         loadComponent: () => import('./workspace-pages').then((module) => module.DashboardPage),
       },
       ...workspace.sections.map((section): Route => {
+        if (section.path === 'ai-usage') {
+          return { path: section.path, title: 'AI Usage | Messenger Support',
+            data: { platform: workspace.loginType === 'super-admin' },
+            loadComponent: () => import('./ai-usage').then(module => module.AiUsagePage) };
+        }
+        if (workspace.loginType === 'super-admin' && section.path === 'facebook-pages') {
+          return { path: section.path, title: 'Facebook Pages | Messenger Support',
+            loadComponent: () => import('./facebook-pages').then(module => module.FacebookPages) };
+        }
         if (['businesses', 'administrators', 'users'].includes(section.path)) {
           const page = {
             title: section.label + ' | Messenger Support',
             data: { management: workspace.loginType === 'business' ? 'tenant' : section.path },
             loadComponent: () => import('./management-page').then(module => module.ManagementPage),
           };
-          return workspace.loginType === 'super-admin' && section.path !== 'businesses'
+          if (section.path === 'businesses') {
+            return { path: 'businesses', children: [{ path: '', pathMatch: 'full', ...page }, {
+              path: ':businessId', title: 'Business Details | Messenger Support',
+              loadComponent: () => import('./business-detail').then(module => module.BusinessDetail),
+            }] };
+          }
+          return workspace.loginType === 'super-admin'
             ? { path: section.path, children: [{ path: '', ...page }, { path: ':businessId', ...page }] }
             : { path: section.path, ...page, ...(section.ownerOnly ? { canActivate: [requireBusinessOwner] } : {}) };
         }

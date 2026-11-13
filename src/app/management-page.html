@@ -114,6 +114,7 @@
       <div>
         @if ('slug' in row) {
           @if (mode === 'businesses') {
+            <a mat-button [routerLink]="['/super-admin/businesses', row.id]">View details</a>
             <button mat-button type="button" [disabled]="saving()" (click)="open('business', row)">Edit</button>
             <a mat-button [routerLink]="['/super-admin/administrators', row.id]">View administrators</a>
             <a mat-button [routerLink]="['/super-admin/users', row.id]">View users</a>
