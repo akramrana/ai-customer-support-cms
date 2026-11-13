@@ -2,16 +2,18 @@ import { Component, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
+import { BusinessFacebookPages } from './business-facebook-pages';
 import { AuthService } from './auth.service';
 import { Section, Workspace } from './workspaces';
 
 @Component({
-  imports: [MatCardModule, RouterLink],
+  imports: [MatCardModule, RouterLink, BusinessFacebookPages],
   template: `
     <header class="page-heading">
       <h1>Dashboard</h1>
       <p>{{ workspace.description }}</p>
     </header>
+    @if (workspace.loginType === 'business') { <app-business-facebook-pages /> }
     <nav class="section-grid" aria-label="Workspace sections">
       @for (section of workspace.sections; track section.path) {
         @if (!section.hidden && (!section.ownerOnly || auth.session()?.business?.role === 'owner')) {

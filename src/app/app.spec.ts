@@ -97,7 +97,12 @@ describe('CMS authentication', () => {
     router = TestBed.inject(Router);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    for (const request of http.match('/api/business/facebook-pages')) {
+      if (!request.cancelled) request.flush({ items: [] });
+    }
+    http.verify();
+  });
 
   async function restore(session: AuthSession | null): Promise<void> {
     const pending = firstValueFrom(auth.restore());
@@ -277,6 +282,30 @@ describe('CMS authentication', () => {
       filtered.flush(data);
     });
   }
+
+  it('shows tenant Facebook Page connection status and links to setup', async () => {
+    await restore(businessSession);
+    const url = '/api/business/facebook-pages';
+    const harness = await RouterTestingHarness.create('/business-admin/dashboard');
+    const request = http.expectOne(url);
+    expect(request.request.withCredentials).toBeTrue();
+    request.flush({ items: [] });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('Connect Facebook Page');
+    await harness.navigateByUrl('/business-admin/facebook-pages');
+    http.expectOne(url).flush({ items: [] });
+    await harness.navigateByUrl('/business-admin/dashboard');
+    const row = { id: '1', page_id: '100', page_name: 'Pending shop', is_active: true, connected_at: '2026-11-01' };
+    http.expectOne(url).flush({ items: [{ ...row, has_access_token: false },
+      { ...row, id: '2', page_id: '200', page_name: 'Disabled shop', is_active: false, has_access_token: true }] });
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    expect(page.textContent).toContain('Facebook Page Connected');
+    expect(page.textContent).toContain('Page ID 200');
+    expect(page.textContent).toContain('Inactive');
+    expect(page.textContent).toContain('Connection required');
+    expect(page.querySelector('a[href="/business-admin/facebook-pages"]')?.textContent).toContain('Add another Page');
+  });
 
   it('lists Facebook Pages, confirms deactivation, and opens the business detail', async () => {
     await restore(superSession);

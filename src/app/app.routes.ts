@@ -29,6 +29,10 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         { path: 'business-administrators', pathMatch: 'full' as const, redirectTo: 'administrators' },
         { path: 'business-administrators/:businessId', redirectTo: 'administrators/:businessId' },
       ] : []),
+      ...(workspace.loginType === 'business' ? [{
+        path: 'facebook-pages', title: 'Facebook Pages | Messenger Support',
+        loadComponent: () => import('./business-facebook-pages').then(module => module.BusinessFacebookPagesSetup),
+      }] : []),
       ...workspace.sections.map((section): Route => {
         if (section.path === 'ai-usage') {
           return { path: section.path, title: 'AI Usage | Messenger Support',
