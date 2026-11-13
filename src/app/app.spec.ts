@@ -200,7 +200,7 @@ describe('CMS authentication', () => {
 
   for (const [path, session, sections] of [
     ['super-admin', superSession, ['businesses', 'users']],
-    ['business-admin', businessSession, ['products', 'conversations', 'orders', 'ai-settings']],
+    ['business-admin', businessSession, ['products', 'brands', 'categories', 'conversations', 'orders', 'ai-settings']],
   ] as const) {
     it(`restores the ${path} workspace and shows its feature routes`, async () => {
       await restore(session);
@@ -211,7 +211,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections.filter((name) => name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
+      for (const section of sections.filter((name) => name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');
@@ -467,9 +467,45 @@ describe('CMS authentication', () => {
     expect(page.textContent).toContain('No products match your search.');
   });
 
+  function flushTaxonomyOptions(): void {
+    for (const [kind, name] of [['brands', 'COSRX'], ['categories', 'Sunscreen']]) {
+      http.expectOne(req => req.url === '/api/business/' + kind)
+        .flush({ items: [{ id: '1', name }], page: 1, pageSize: 100, total: 1 });
+    }
+  }
+
+  for (const [kind, label] of [['brands', 'brand'], ['categories', 'category']]) {
+    it('lists, validates and handles duplicate names for ' + kind, async () => {
+      await restore(businessSession);
+      const url = '/api/business/' + kind;
+      const harness = await RouterTestingHarness.create('/business-admin/' + kind);
+      const page = harness.routeNativeElement!;
+      http.expectOne(req => req.url === url).flush(chatPage([{ id: '1', name: 'Existing' }], 1, 1));
+      harness.detectChanges();
+      expect(page.textContent).toContain('Existing');
+      clickText(page, 'Add ' + label);
+      harness.detectChanges();
+      const form = page.querySelector('form')!;
+      const input = form.querySelector('input')!;
+      enterValue(input, '   ');
+      submitCatalogForm(form);
+      http.expectNone({ method: 'POST', url });
+      enterValue(input, '  New   name ');
+      submitCatalogForm(form);
+      const request = http.expectOne({ method: 'POST', url });
+      expect(request.request.body).toEqual({ name: 'New name' });
+      expect(request.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+      request.flush({ error: 'Name already exists.' }, { status: 409, statusText: 'Conflict' });
+      harness.detectChanges();
+      expect(page.textContent).toContain('Name already exists.');
+    });
+  }
+
   it('validates the create form and keeps its draft after a duplicate SKU conflict', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/products/new');
+    flushTaxonomyOptions();
+    harness.detectChanges();
     const page = harness.routeNativeElement!;
     const form = page.querySelector('form')!;
     clickText(page, 'Add variant');
@@ -485,6 +521,10 @@ describe('CMS authentication', () => {
     harness.detectChanges();
     expect(page.textContent).toContain('Correct the highlighted fields');
 
+    const brand = page.querySelector<HTMLSelectElement>('[formControlName=brand_id]')!;
+    expect(brand.options[1].textContent).toBe('COSRX');
+    brand.selectedIndex = 1;
+    brand.dispatchEvent(new Event('change'));
     setField(page, 'price', '19.95');
     setField(page, 'stockQty', '12');
     setField(page, 'imageUrl', 'https://example.test/tee.png');
@@ -493,7 +533,7 @@ describe('CMS authentication', () => {
     const request = http.expectOne({ method: 'POST', url: catalogUrl });
     expect(request.request.withCredentials).toBeTrue();
     expect(request.request.body).toEqual({
-      name: 'Cotton tee', description: null, isActive: true,
+      name: 'Cotton tee', description: null, isActive: true, brand_id: '1', category_id: null,
       variants: [{ sku: 'TEE-S', variantName: null, price: '19.95', stockQty: 12, isActive: true,
         sellingMode: 'packaged', measurementUnit: 'pcs', measurementValue: '1' }],
       images: [{ imageUrl: 'https://example.test/tee.png', altText: null, sortOrder: 0 }],
@@ -514,6 +554,7 @@ describe('CMS authentication', () => {
   it('sends only edited children, new rows without IDs, and explicit image removals', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/products/10/edit');
+    flushTaxonomyOptions();
     const page = harness.routeNativeElement!;
     http.expectOne(catalogUrl + '/10').flush(catalogDetail);
     harness.detectChanges();
@@ -773,6 +814,8 @@ describe('CMS authentication', () => {
   it('validates and saves the variant selling mode and measurement', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/products/new');
+    flushTaxonomyOptions();
+    harness.detectChanges();
     const page = harness.routeNativeElement!;
     clickText(page, 'Add variant');
     harness.detectChanges();

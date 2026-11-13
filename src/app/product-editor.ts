@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,8 +11,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, EMPTY, finalize, Subject, switchMap } from 'rxjs';
+import { catchError, EMPTY, finalize, forkJoin, Subject, switchMap } from 'rxjs';
 
+import { CatalogTaxonomyService, TaxonomyItem } from './catalog-taxonomy.service';
 import { AuthService } from './auth.service';
 import {
   ImageFields, MeasurementUnit, ProductCatalogService, ProductCreate, ProductDetail, ProductUpdate,
@@ -90,6 +91,7 @@ function childUpdates<T extends object>(
 })
 export class ProductEditorPage {
   private readonly api = inject(ProductCatalogService);
+  private readonly taxonomy = inject(CatalogTaxonomyService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly route = inject(ActivatedRoute);
@@ -107,11 +109,17 @@ export class ProductEditorPage {
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly previewUrl = previewUrl;
+  protected readonly brands = signal<TaxonomyItem[]>([]);
+  protected readonly categories = signal<TaxonomyItem[]>([]);
+  protected readonly optionsError = signal('');
+  protected readonly optionsLoading = signal(false);
   protected readonly form = this.fb.group({
     name: ['', [nonblank, Validators.maxLength(255)]],
     description: ['', (control: AbstractControl) =>
       new TextEncoder().encode(control.value).length <= 65535 ? null : { size: true }],
     isActive: true,
+    brand_id: new FormControl<string | null>(null),
+    category_id: new FormControl<string | null>(null),
     variants: this.fb.array<ReturnType<ProductEditorPage['variantForm']>>([]),
     images: this.fb.array<ReturnType<ProductEditorPage['imageForm']>>([]),
   });
@@ -119,6 +127,7 @@ export class ProductEditorPage {
   protected readonly images = this.form.controls.images;
 
   constructor() {
+    this.loadOptions();
     this.reloadRequests.pipe(
       switchMap((id) => {
         this.loadError.set('');
@@ -140,6 +149,24 @@ export class ProductEditorPage {
       this.id.set(params.get('id'));
       this.reload();
     });
+  }
+
+  protected loadOptions(): void {
+    if (this.optionsLoading()) return;
+    this.optionsLoading.set(true);
+    this.optionsError.set('');
+    forkJoin({ brands: this.taxonomy.options('brands'), categories: this.taxonomy.options('categories') })
+      .pipe(finalize(() => this.optionsLoading.set(false)), takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: ({ brands, categories }) => { this.brands.set(brands); this.categories.set(categories); },
+        error: () => this.optionsError.set('Unable to load brands and categories.'),
+      });
+  }
+
+  protected existingAssignment(kind: 'brand' | 'category'): TaxonomyItem | undefined {
+    const id = kind === 'brand' ? this.original?.brand_id : this.original?.category_id;
+    const name = kind === 'brand' ? this.original?.brandName : this.original?.categoryName;
+    const items = kind === 'brand' ? this.brands() : this.categories();
+    return id && !items.some(item => item.id === id) ? { id, name: name || id } : undefined;
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -209,7 +236,9 @@ export class ProductEditorPage {
       error: (error: unknown) => {
         this.error.set(error instanceof HttpErrorResponse && error.status === 409
           ? 'A SKU already exists in this business. Use a unique SKU for each variant.'
-          : 'Unable to save the product. Your edits are still here.');
+          : error instanceof HttpErrorResponse && error.status === 400 && /^(brand_id|category_id)/.test(error.error?.error)
+            ? 'Select an active brand or category, or clear the assignment.'
+            : 'Unable to save the product. Your edits are still here.');
         this.finishSaving();
       },
     });
@@ -229,6 +258,8 @@ export class ProductEditorPage {
     for (const image of product?.images ?? []) this.images.push(this.imageForm(image));
     this.form.controls.name.reset(product?.name ?? '');
     this.form.controls.description.reset(product?.description ?? '');
+    this.form.controls.brand_id.reset(product?.brand_id ?? null);
+    this.form.controls.category_id.reset(product?.category_id ?? null);
     this.form.controls.isActive.reset(product?.isActive ?? true);
     this.form.markAsPristine();
     this.form.markAsUntouched();
@@ -273,6 +304,8 @@ export class ProductEditorPage {
       name: draft.name.trim(),
       description: draft.description || null,
       isActive: draft.isActive,
+      brand_id: draft.brand_id,
+      category_id: draft.category_id,
     };
     const variants = draft.variants.map(normalizeVariant);
     const images = draft.images.map(normalizeImage);
@@ -290,6 +323,8 @@ export class ProductEditorPage {
         name: this.original.name.trim(),
         description: this.original.description || null,
         isActive: this.original.isActive,
+        brand_id: this.original.brand_id ?? null,
+        category_id: this.original.category_id ?? null,
       }),
       variants: childUpdates<VariantFields>(variants, this.original.variants.map(normalizeVariant)),
       images: childUpdates<ImageFields>(images, this.original.images.map(normalizeImage)),

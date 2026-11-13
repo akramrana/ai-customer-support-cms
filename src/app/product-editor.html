@@ -21,6 +21,39 @@
             <mat-error>Enter a product name.</mat-error>
           </mat-form-field>
           <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
+          @if (optionsLoading()) {
+            <p role="status">Loading brands and categories...</p>
+          } @else if (optionsError()) {
+            <div>
+              <p class="error" role="alert">{{ optionsError() }}</p>
+              <button mat-stroked-button type="button" (click)="loadOptions()">Retry</button>
+            </div>
+          } @else {
+            <mat-form-field appearance="outline">
+              <mat-label>Brand</mat-label>
+              <select matNativeControl formControlName="brand_id">
+                <option [ngValue]="null">None</option>
+                @if (existingAssignment('brand'); as existing) {
+                  <option [ngValue]="existing.id" disabled>{{ existing.name }} (inactive)</option>
+                }
+                @for (brand of brands(); track brand.id) {
+                  <option [ngValue]="brand.id">{{ brand.name }}</option>
+                }
+              </select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Category</mat-label>
+              <select matNativeControl formControlName="category_id">
+                <option [ngValue]="null">None</option>
+                @if (existingAssignment('category'); as existing) {
+                  <option [ngValue]="existing.id" disabled>{{ existing.name }} (inactive)</option>
+                }
+                @for (category of categories(); track category.id) {
+                  <option [ngValue]="category.id">{{ category.name }}</option>
+                }
+              </select>
+            </mat-form-field>
+          }
           <mat-form-field appearance="outline" class="full">
             <mat-label>Description</mat-label>
             <textarea matInput formControlName="description" rows="3"></textarea>

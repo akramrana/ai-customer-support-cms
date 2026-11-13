@@ -5,6 +5,8 @@ export interface ProductFields {
   name: string;
   description: string | null;
   isActive: boolean;
+  brand_id?: string | null;
+  category_id?: string | null;
 }
 
 export type SellingMode = 'packaged' | 'by_measure';
@@ -29,6 +31,8 @@ export interface ImageFields {
 
 export interface ProductSummary extends ProductFields {
   id: string;
+  brandName?: string | null;
+  categoryName?: string | null;
 }
 
 export interface ProductDetail extends ProductSummary {

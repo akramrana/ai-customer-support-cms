@@ -26,6 +26,14 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
         loadComponent: () => import('./workspace-pages').then((module) => module.DashboardPage),
       },
       ...workspace.sections.map((section): Route => {
+        if (workspace.loginType === 'business' && ['brands', 'categories'].includes(section.path)) {
+          return {
+            path: section.path,
+            title: `${section.label} | Messenger Support`,
+            data: { kind: section.path },
+            loadComponent: () => import('./catalog-taxonomy').then(module => module.CatalogTaxonomyPage),
+          };
+        }
         if (workspace.loginType === 'business' && section.path === 'products') {
           return {
             path: 'products',

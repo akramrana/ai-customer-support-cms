@@ -33,6 +33,8 @@ export const businessAdmin: Workspace = {
   description: 'Manage Messenger support and commerce for your business.',
   sections: [
     { path: 'products', label: 'Products', description: 'Manage your product catalog and variants.' },
+    { path: 'brands', label: 'Brands', description: 'Manage product brands.' },
+    { path: 'categories', label: 'Categories', description: 'Manage product categories.' },
     { path: 'inventory', label: 'Inventory', hidden: true, description: 'Review stock levels and inventory movements.' },
     { path: 'conversations', label: 'Conversations', description: 'Review Messenger threads and support handoffs.' },
     { path: 'orders', label: 'Orders', description: 'Track customer orders and fulfillment.' },
