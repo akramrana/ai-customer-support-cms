@@ -283,6 +283,42 @@ describe('CMS authentication', () => {
     });
   }
 
+  it('accepts Facebook OAuth results only from the opened popup and configured origin', async () => {
+    await restore(businessSession);
+    const url = '/api/business/facebook-pages';
+    const harness = await RouterTestingHarness.create('/business-admin/facebook-pages');
+    http.expectOne(url).flush({ items: [] });
+    http.expectOne(url + '/oauth/available').flush({ authorized: false, items: [] });
+    harness.detectChanges();
+    const popup = { location: { replace: jasmine.createSpy() }, close: jasmine.createSpy(), closed: false };
+    spyOn(window, 'open').and.returnValue(popup as unknown as Window);
+    const page = harness.routeNativeElement!;
+    const start = () => {
+      clickText(page, 'Connect Facebook Page');
+      const request = http.expectOne(url + '/oauth/start');
+      expect(request.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+      request.flush({ authorizationUrl: 'https://www.facebook.com/v27.0/dialog/oauth', callbackOrigin: 'https://tunnel.test' });
+      harness.detectChanges();
+    };
+    const result = (value: string, origin: string, source: unknown) => {
+      const event = new MessageEvent('message', { origin, data: { type: 'facebook-oauth', result: value } });
+      Object.defineProperty(event, 'source', { value: source });
+      window.dispatchEvent(event);
+    };
+    start();
+    result('select', 'https://other.test', popup);
+    result('select', 'https://tunnel.test', window);
+    http.expectNone(url + '/oauth/available');
+    result('error', 'https://tunnel.test', popup);
+    harness.detectChanges();
+    expect(page.textContent).toContain('Facebook authorization could not be completed');
+    start();
+    result('select', 'https://tunnel.test', popup);
+    http.expectOne(url + '/oauth/available').flush({ authorized: true, items: [{ page_id: '1', page_name: 'Shop' }] });
+    harness.detectChanges();
+    expect(page.textContent).toContain('Select a Facebook Page');
+  });
+
   it('shows tenant Facebook Page connection status and links to setup', async () => {
     await restore(businessSession);
     const url = '/api/business/facebook-pages';
@@ -293,6 +329,14 @@ describe('CMS authentication', () => {
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Connect Facebook Page');
     await harness.navigateByUrl('/business-admin/facebook-pages');
+    http.expectOne(url).flush({ items: [] });
+    http.expectOne(url + '/oauth/available').flush({ authorized: true, items: [{ page_id: '100', page_name: 'Shop' }] });
+    harness.detectChanges();
+    clickText(harness.routeNativeElement!, 'Connect');
+    const connect = http.expectOne({ method: 'POST', url: url + '/connect' });
+    expect(connect.request.body).toEqual({ page_id: '100' });
+    expect(connect.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+    connect.flush(null, { status: 204, statusText: 'No Content' });
     http.expectOne(url).flush({ items: [] });
     await harness.navigateByUrl('/business-admin/dashboard');
     const row = { id: '1', page_id: '100', page_name: 'Pending shop', is_active: true, connected_at: '2026-11-01' };
