@@ -1,5 +1,5 @@
 <header class="page-heading"><h1>AI Usage</h1></header>
-<form class="fields" [formGroup]="form" (ngSubmit)="load()">
+<form class="fields cms-card" [formGroup]="form" (ngSubmit)="load()">
   <mat-form-field appearance="outline">
     <mat-label>From (UTC)</mat-label><input matInput type="date" formControlName="from" required>
   </mat-form-field>
@@ -19,23 +19,23 @@
   }
   <div><button mat-flat-button type="submit" [disabled]="loading()">Apply filters</button></div>
 </form>
-@if (businessesLoading()) { <p role="status">Loading business options…</p> }
+@if (businessesLoading()) { <p class="cms-state" role="status">Loading business options…</p> }
 @if (businessError()) {
-  <p role="alert" class="error">Unable to load business options.</p>
+  <p role="alert" class="cms-feedback error">Unable to load business options.</p>
   <button mat-button type="button" (click)="loadBusinesses()">Retry</button>
 }
-@if (error()) { <p role="alert" class="error">{{ error() }}</p> }
+@if (error()) { <p role="alert" class="cms-feedback error">{{ error() }}</p> }
 @if (loading()) {
-  <p role="status">Loading AI usage…</p>
+  <p class="cms-state" role="status">Loading AI usage…</p>
 } @else if (!error() && usage(); as data) {
   <dl class="usage-metrics">
-    <div><dt>API calls</dt><dd>{{ data.totalCalls | number }}</dd></div>
-    <div><dt>Total tokens</dt><dd>{{ data.inputTokens + data.outputTokens | number }}</dd></div>
-    <div><dt>Success rate</dt><dd>{{ data.totalCalls ? (data.successfulCalls / data.totalCalls | percent:'1.0-1') : '—' }}</dd></div>
-    <div><dt>Average response time</dt><dd>{{ data.averageLatencyMs === null ? '—' : (data.averageLatencyMs | number:'1.0-0') + ' ms' }}</dd></div>
+    <div class="cms-card"><dt>API calls</dt><dd>{{ data.totalCalls | number }}</dd></div>
+    <div class="cms-card"><dt>Total tokens</dt><dd>{{ data.inputTokens + data.outputTokens | number }}</dd></div>
+    <div class="cms-card"><dt>Success rate</dt><dd>{{ data.totalCalls ? (data.successfulCalls / data.totalCalls | percent:'1.0-1') : '—' }}</dd></div>
+    <div class="cms-card"><dt>Average response time</dt><dd>{{ data.averageLatencyMs === null ? '—' : (data.averageLatencyMs | number:'1.0-0') + ' ms' }}</dd></div>
   </dl>
-  @if (!data.totalCalls) { <p role="status">No AI usage for this date range.</p> }
-  <section aria-labelledby="daily-title">
+  @if (!data.totalCalls) { <p class="cms-state" role="status">No AI usage for this date range.</p> }
+  <section class="cms-card cms-section" aria-labelledby="daily-title">
     <h2 id="daily-title">Daily token usage</h2>
     @if (data.inputTokens || data.outputTokens) {
       <p class="legend"><span>Input tokens</span><span>Output tokens</span></p>
@@ -53,10 +53,10 @@
       </ol>
     } @else { <p>No token counts recorded for this date range.</p> }
   </section>
-  <section aria-labelledby="errors-title">
+  <section class="cms-card cms-section" aria-labelledby="errors-title">
     <h2 id="errors-title">Recent errors</h2>
     @if (data.recentErrors.length) {
-      <table>
+      <div class="cms-table-scroll" tabindex="0" role="region" aria-label="Recent errors"><table class="cms-table">
         <thead><tr><th scope="col">Error</th><th scope="col">Calls</th><th scope="col">Last seen (UTC)</th></tr></thead>
         <tbody>
           @for (error of data.recentErrors; track $index) {
@@ -64,7 +64,7 @@
               <td>{{ error.lastSeen | date:'medium':'UTC' }}</td></tr>
           }
         </tbody>
-      </table>
+      </table></div>
     } @else { <p>No errors for this date range.</p> }
   </section>
 }

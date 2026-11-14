@@ -1,3 +1,4 @@
+import { canManageBusinessOperations } from './auth.models';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -22,6 +23,7 @@ import { Workspace } from './workspaces';
   styleUrl: './workspace-layout.scss',
 })
 export class WorkspaceLayout {
+  protected readonly canManageOperations = canManageBusinessOperations;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);

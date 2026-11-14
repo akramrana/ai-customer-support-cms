@@ -168,7 +168,7 @@ describe('CMS authentication', () => {
     list.flush({ items: [order], total: 1 });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Awaiting review: 1');
-    expect(harness.routeNativeElement?.querySelector('a[href="/business-admin/orders/42"]')?.textContent).toContain('ORD-42');
+    expect(harness.routeNativeElement?.querySelector('a[href="/business-admin/orders/42"]')?.textContent).toContain('Order #42');
     await harness.navigateByUrl('/business-admin/orders/42');
     http.expectOne(base + '/42').flush(detail);
     harness.detectChanges();
@@ -187,6 +187,78 @@ describe('CMS authentication', () => {
     http.expectOne(base + '/42').flush({ ...detail, status: 'confirmed' });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Confirmed');
+    const dispatch = Array.from(harness.routeNativeElement!.querySelectorAll('button'))
+      .find(node => node.textContent?.includes('Dispatched & Update Stock'))!;
+    dispatch.click();
+    expect(confirm.calls.mostRecent().args[0]).toContain('Loose rice · 1.500 kg');
+    http.expectOne({ method: 'POST', url: base + '/42/dispatch' }).flush({ status: 'dispatched' });
+    http.expectOne(base + '/42').flush({ ...detail, status: 'dispatched' });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).not.toContain('Dispatched & Update Stock');
+  });
+
+  it('creates one manual order with multiple editable variant rows and the configured delivery fee', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/create-order');
+    http.expectOne(deliveryUrl).flush(deliveryFixture);
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    const input = (selector: string, value: string) => {
+      const element = page.querySelector<HTMLInputElement>(selector)!;
+      element.value = value;
+      element.dispatchEvent(new Event('input'));
+      harness.detectChanges();
+    };
+    const select = (index: number, value: string) => {
+      const element = page.querySelectorAll('select')[index];
+      element.value = value;
+      element.dispatchEvent(new Event('change'));
+      harness.detectChanges();
+    };
+    const click = (label: string) => {
+      Array.from(page.querySelectorAll('button')).find(button => button.textContent?.trim() === label)!.click();
+      harness.detectChanges();
+    };
+    const pick = async (sku: string, id: string, price: string) => {
+      const search = page.querySelector<HTMLInputElement>('app-variant-picker input')!;
+      search.focus();
+      input('app-variant-picker input', 'Shirt ' + sku);
+      await new Promise(resolve => setTimeout(resolve, 325));
+      const request = http.expectOne(req => req.url === '/api/business/products/variant-search');
+      expect(request.request.params.get('search')).toBe('Shirt ' + sku);
+      expect(request.request.params.get('activeOnly')).toBe('true');
+      request.flush({ items: [{
+        product: { id: '9', name: 'Shirt', isActive: true },
+        variant: { id, sku, price, isActive: true, stockQty: 3, measurementValue: '1', measurementUnit: 'pcs' },
+      }] });
+      harness.detectChanges();
+      await harness.fixture.whenStable();
+      (document.querySelector('mat-option') as HTMLElement).click();
+      harness.detectChanges();
+    };
+    await pick('S', '100', '10.00');
+    click('Add Product');
+    click('Add Product');
+    expect(page.querySelectorAll('tbody tr').length).toBe(1);
+    await pick('M', '101', '20.00');
+    click('Add Product');
+    input('[aria-label="Quantity for S"]', '3');
+    input('[formcontrolname="customerName"]', 'Customer');
+    input('[formcontrolname="phone"]', '01700000000');
+    input('[formcontrolname="address"]', 'Address');
+    select(0, 'outside');
+    expect(page.textContent).toContain('150.00 BDT');
+    click('Save order');
+    const request = http.expectOne({ method: 'POST', url: '/api/business/orders' });
+    expect(request.request.body.items).toEqual([{ variantId: '100', quantity: 3 }, { variantId: '101', quantity: 1 }]);
+    expect(request.request.body.zone).toBe('outside');
+    request.flush({ error: 'Temporary test failure' }, { status: 500, statusText: 'Error' });
+    harness.detectChanges();
+    expect(page.querySelectorAll('tbody tr').length).toBe(2);
+    click('Save order');
+    const retry = http.expectOne({ method: 'POST', url: '/api/business/orders' });
+    expect(retry.request.body.requestId).toBe(request.request.body.requestId);
+    retry.flush({ error: 'Temporary test failure' }, { status: 500, statusText: 'Error' });
   });
 
   it('sends anonymous visitors to the appropriate sign-in page without a preview link', async () => {
@@ -205,7 +277,7 @@ describe('CMS authentication', () => {
 
   for (const [path, session, sections] of [
     ['super-admin', superSession, ['businesses', 'ai-usage', 'facebook-pages', 'administrators', 'users']],
-    ['business-admin', businessSession, ['products', 'brands', 'categories', 'conversations', 'users', 'orders', 'ai-usage', 'ai-settings']],
+    ['business-admin', businessSession, ['products', 'brands', 'categories', 'inventory', 'conversations', 'users', 'orders', 'create-order', 'ai-usage', 'ai-settings']],
   ] as const) {
     it(`restores the ${path} workspace and shows its feature routes`, async () => {
       await restore(session);
@@ -216,7 +288,7 @@ describe('CMS authentication', () => {
       );
       expect(links).toEqual(sections.map((section) => `/${path}/${section}`));
 
-      for (const section of sections.filter((name) => !['businesses', 'ai-usage', 'facebook-pages', 'administrators', 'users'].includes(name) && name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders')) {
+      for (const section of sections.filter((name) => !['businesses', 'ai-usage', 'facebook-pages', 'administrators', 'users'].includes(name) && name !== 'brands' && name !== 'categories' && name !== 'ai-settings' && name !== 'products' && name !== 'conversations' && name !== 'orders' && name !== 'inventory' && name !== 'create-order')) {
         await harness.navigateByUrl(`/${path}/${section}`);
         expect(harness.routeNativeElement?.querySelector('main h2')?.textContent)
           .toContain('Awaiting API integration');
@@ -784,7 +856,7 @@ describe('CMS authentication', () => {
     http.expectOne(catalogUrl + '/10').flush(catalogDetail);
     harness.detectChanges();
     const firstVariant = page.querySelector('[aria-label="Variant 1"]')!;
-    setField(firstVariant, 'stockQty', '9');
+    expect(firstVariant.querySelector<HTMLInputElement>('[formcontrolname="stockQty"]')?.readOnly).toBeTrue();
     firstVariant.querySelector('mat-slide-toggle button')!.dispatchEvent(new Event('click'));
     clickText(page, 'Add variant');
     clickText(page, 'Add image');
@@ -800,7 +872,7 @@ describe('CMS authentication', () => {
     const update = http.expectOne({ method: 'PUT', url: catalogUrl + '/10' });
     expect(update.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
     expect(update.request.body).toEqual({
-      variants: [{ id: '100', stockQty: 9, isActive: false },
+      variants: [{ id: '100', isActive: false },
         { sku: 'TEE-XL', variantName: null, price: '21', stockQty: 0, isActive: true,
           sellingMode: 'packaged', measurementUnit: 'pcs', measurementValue: '1' }],
       images: [{ imageUrl: 'https://example.test/back.png', altText: null, sortOrder: 0 }],

@@ -1,6 +1,6 @@
 <a mat-button routerLink="..">Back to AI settings</a>
 <h1>Gemini API key</h1>
-<mat-card appearance="outlined">
+<mat-card class="cms-card cms-material-card" appearance="outlined">
   <mat-card-content>
     @if (configured() === null) {
       <p>{{ busy() ? 'Loading key status…' : 'Key status unavailable' }}</p>
@@ -21,7 +21,7 @@
         </div>
       </form>
     }
-    @if (success()) { <p role="status">{{ success() }}</p> }
-    @if (error()) { <p role="alert">{{ error() }}</p> }
+    @if (success()) { <p class="cms-state" role="status">{{ success() }}</p> }
+    @if (error()) { <p class="cms-feedback error" role="alert">{{ error() }}</p> }
   </mat-card-content>
 </mat-card>

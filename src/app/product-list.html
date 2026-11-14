@@ -14,7 +14,7 @@
 @if (success()) { <p role="status" class="feedback">{{ success() }}</p> }
 @if (actionError()) { <p role="alert" class="feedback error">{{ actionError() }}</p> }
 
-<section class="catalog-results" aria-label="Product results" [attr.aria-busy]="loading()">
+<section class="catalog-results cms-card cms-material-card" aria-label="Product results" [attr.aria-busy]="loading()">
   @if (loading()) {
     <mat-progress-bar mode="indeterminate" aria-label="Loading products" />
     <div class="results-state" role="status">Loading products…</div>

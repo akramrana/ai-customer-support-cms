@@ -6,6 +6,7 @@ export interface Section {
   description: string;
   hidden?: boolean;
   ownerOnly?: boolean;
+  operationsOnly?: boolean;
 }
 
 export interface Workspace {
@@ -39,10 +40,11 @@ export const businessAdmin: Workspace = {
     { path: 'products', label: 'Products', description: 'Manage your product catalog and variants.' },
     { path: 'brands', label: 'Brands', description: 'Manage product brands.' },
     { path: 'categories', label: 'Categories', description: 'Manage product categories.' },
-    { path: 'inventory', label: 'Inventory', hidden: true, description: 'Review stock levels and inventory movements.' },
+    { path: 'inventory', label: 'Inventory', description: 'Review stock levels and inventory movements.' },
     { path: 'conversations', label: 'Conversations', description: 'Review Messenger threads and support handoffs.' },
     { path: 'users', label: 'Users', description: 'Manage users in your business.', ownerOnly: true },
     { path: 'orders', label: 'Orders', description: 'Track customer orders and fulfillment.' },
+    { path: 'create-order', label: 'Create Order', description: 'Create a manual order.', operationsOnly: true },
     { path: 'ai-usage', label: 'AI Usage', description: 'Review provider calls, tokens, and errors for your business.' },
     { path: 'ai-settings', label: 'AI Settings', description: 'Configure AI reply modes and schedules.' },
   ],

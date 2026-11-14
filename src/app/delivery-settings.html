@@ -1,11 +1,11 @@
-<mat-card appearance="outlined">
+<mat-card class="cms-card cms-material-card" appearance="outlined">
   <mat-card-content>
     <h2 id="delivery-settings-heading">Delivery Settings</h2>
     @if (loading()) {
-      <p role="status">Loading delivery settings…</p>
+      <p class="cms-state" role="status">Loading delivery settings…</p>
       <mat-progress-bar mode="indeterminate" aria-label="Loading delivery settings" />
     } @else if (loadError()) {
-      <p role="alert" class="error">Couldn’t load delivery settings.</p>
+      <p role="alert" class="cms-feedback error">Couldn’t load delivery settings.</p>
       <button mat-stroked-button type="button" (click)="load()">Retry delivery settings</button>
     } @else {
       <form [formGroup]="form" (ngSubmit)="save()" aria-labelledby="delivery-settings-heading"

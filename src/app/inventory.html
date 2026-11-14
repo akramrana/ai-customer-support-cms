@@ -1,0 +1,64 @@
+<section class="orders commerce-page">
+  <header class="commerce-header">
+  <h1>Inventory</h1>
+  <p>Search for a product and select a variant to view its stock and movement history.</p>
+  </header>
+  <section class="cms-card">
+    <h2>Find inventory</h2>
+    <app-variant-picker (selected)="select($event)" />
+    @if (!choice()) { <p class="commerce-empty">Select a variant to see its stock and movement history.</p> }
+  </section>
+  @if (loading()) { <p class="cms-state" role="status">Loading inventory…</p> }
+  @if (error()) { <p class="cms-feedback error" role="alert">{{ error() }} @if (choice() && !data()) { <button mat-button type="button" (click)="load()">Retry</button> }</p> }
+  @if (success()) { <p class="cms-state" role="status">{{ success() }}</p> }
+  @if (data(); as current) {
+    <div class="inventory-columns">
+      <section class="cms-card">
+        <h2>Selected variant</h2>
+        @if (choice(); as selected) {
+          <p class="variant-name">{{ selected.product.name }}</p>
+          <p class="commerce-muted">{{ selected.variant.variantName || selected.variant.measurementValue + ' ' + selected.variant.measurementUnit }}</p>
+          <dl class="variant-identifiers">
+            <div><dt>Size</dt><dd>{{ selected.variant.measurementValue }} {{ selected.variant.measurementUnit }}</dd></div>
+            <div><dt>SKU</dt><dd>{{ selected.variant.sku }}</dd></div>
+          </dl>
+        }
+        <div class="stock-count"><span>Current stock</span><strong>{{ current.stock }}</strong></div>
+      </section>
+      <section class="cms-card">
+        <h2>Adjust stock</h2>
+    @if (canManage()) {
+      <form class="commerce-fields stock-fields" (submit)="$event.preventDefault(); save()">
+        <label>Stock action <select [formControl]="operation">
+          <option value="add">Add Stock</option><option value="remove">Remove Stock</option><option value="set">Set Exact Quantity</option>
+        </select></label>
+        <label>Quantity <input type="number" min="0" step="1" [formControl]="quantity"></label>
+        <button mat-flat-button class="commerce-primary" type="submit" [disabled]="saving() || loading()">{{ saving() ? 'Saving…' : 'Update stock' }}</button>
+      </form>
+      <p>Movement reasons are recorded automatically as Restock for additions and Adjustment for removals or exact counts.</p>
+    } @else {
+      <p>Your role can view stock and movement history. A business owner or admin can adjust stock.</p>
+    }
+      </section>
+    </div>
+    <section class="cms-card">
+    <h2>Stock movements</h2>
+    @if (!current.movements.length) { <p class="commerce-empty">No stock movements for this variant.</p> }
+    @else {
+      <div class="table-scroll commerce-table"><table>
+        <thead><tr><th>Date</th><th>Reason</th><th>Change</th><th>Resulting quantity</th><th>Reference</th><th>Admin</th></tr></thead>
+        <tbody>
+          @for (entry of current.movements; track entry.id) {
+            <tr><td>{{ entry.createdAt | date:'medium' }}</td><td>{{ entry.reason }}</td>
+              <td>{{ entry.change > 0 ? '+' : '' }}{{ entry.change }}</td><td>{{ entry.quantityAfter }}</td>
+              <td>{{ entry.referenceType || '—' }} {{ entry.referenceId || '' }}</td><td>{{ entry.adminName || entry.adminId || '—' }}</td></tr>
+          }
+        </tbody>
+      </table></div>
+      @if (current.next; as next) {
+        <button mat-stroked-button type="button" [disabled]="loading()" (click)="load(next)">Load older movements</button>
+      }
+    }
+    </section>
+  }
+</section>

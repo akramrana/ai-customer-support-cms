@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
-export const orderStatuses = ['draft', 'pending_confirmation', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
+export const orderStatuses = ['draft', 'pending_confirmation', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'dispatched'] as const;
 export type OrderStatus = (typeof orderStatuses)[number];
-export type OrderAction = 'confirm' | 'cancel';
+export type OrderAction = 'confirm' | 'cancel' | 'dispatch';
 
 export interface OrderSummary {
   id: string;
@@ -32,12 +32,20 @@ export interface OrderItem {
 
 export interface OrderDetail extends OrderSummary {
   conversationId: string | null;
+  source?: 'manual' | 'messenger' | null;
+  confirmedBy?: string | null;
+  confirmedAt?: string | null;
+  dispatchedAt?: string | null;
   address: string | null;
   region: 'inside_dhaka' | 'outside_dhaka' | null;
   extraRequest: string | null;
   subtotal: string;
   deliveryFee: string;
   items: OrderItem[];
+}
+
+export function shortOrderNumber(reference: string): string {
+  return reference.replace(/^ORD-/i, '').slice(-6);
 }
 
 export function orderStatusLabel(status: OrderStatus): string {
@@ -62,6 +70,11 @@ export class OrdersService {
 
   details(id: string) {
     return this.http.get<OrderDetail>(this.url + '/' + encodeURIComponent(id));
+  }
+
+  create(input: { requestId: string; zone: 'inside' | 'outside'; customerName: string; phone: string; address: string;
+    items: { variantId: string; quantity: number }[] }) {
+    return this.http.post<{ id: string }>(this.url, input);
   }
 
   review(id: string, action: OrderAction) {

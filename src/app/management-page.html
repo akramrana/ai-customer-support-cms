@@ -19,7 +19,7 @@
 @if (error() && !editor()) { <p class="error" role="alert">{{ error() }}</p> }
 @if (message()) { <p role="status">{{ message() }}</p> }
 @if (editor(); as action) {
-  <form class="editor" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="saving()">
+  <form class="editor cms-card" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="saving()">
     <div class="fields">
       @if (action === 'business' || action === 'user') {
         <mat-form-field appearance="outline">
@@ -89,7 +89,7 @@
   </form>
 }
 
-<form class="fields" (submit)="$event.preventDefault(); searchList()">
+<form class="fields cms-card" (submit)="$event.preventDefault(); searchList()">
   <mat-form-field appearance="outline">
     <mat-label>Search by name</mat-label><input matInput type="search" [formControl]="search" maxlength="255">
   </mat-form-field>

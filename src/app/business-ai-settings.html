@@ -4,18 +4,18 @@
 </header>
 
 @if (loading()) {
-  <p role="status">Loading AI settings…</p>
+  <p class="cms-state" role="status">Loading AI settings…</p>
   <mat-progress-bar mode="indeterminate" aria-label="Loading AI settings" />
 } @else if (loadError()) {
-  <mat-card appearance="outlined">
+  <mat-card class="cms-card cms-material-card" appearance="outlined">
     <mat-card-content>
-      <p role="alert" class="error">{{ loadError() }}</p>
+      <p role="alert" class="cms-feedback error">{{ loadError() }}</p>
       <button mat-stroked-button type="button" (click)="load()">Retry loading</button>
     </mat-card-content>
   </mat-card>
 } @else {
   <div class="settings-layout">
-    <mat-card appearance="outlined">
+    <mat-card class="cms-card cms-material-card" appearance="outlined">
       <mat-card-content>
         <form [formGroup]="settings" (ngSubmit)="saveSettings()" [attr.aria-busy]="saving() === 'settings'">
           <h2 id="mode-heading">AI reply mode</h2>
@@ -47,7 +47,7 @@
     </mat-card>
 
     @if (mode() === 'scheduled') {
-      <mat-card appearance="outlined">
+      <mat-card class="cms-card cms-material-card" appearance="outlined">
         <mat-card-content>
           <form [formGroup]="scheduleForm" (ngSubmit)="saveSchedules()" [attr.aria-busy]="saving() === 'schedules'">
             <h2>Weekly schedule</h2>

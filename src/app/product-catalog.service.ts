@@ -40,6 +40,11 @@ export interface ProductDetail extends ProductSummary {
   images: (ImageFields & { id: string })[];
 }
 
+export interface VariantChoice {
+  product: Pick<ProductSummary, 'id' | 'name' | 'isActive' | 'brandName'>;
+  variant: ProductDetail['variants'][number];
+}
+
 export interface ProductPage {
   items: ProductSummary[];
   page: number;
@@ -67,6 +72,12 @@ export class ProductCatalogService {
 
   list(page: number, pageSize: number, search: string) {
     return this.http.get<ProductPage>(this.url, { params: { page, pageSize, search } });
+  }
+
+  searchVariants(search: string, activeOnly: boolean) {
+    return this.http.get<{ items: VariantChoice[] }>(this.url + '/variant-search', {
+      params: { search, activeOnly },
+    });
   }
 
   detail(id: string) {

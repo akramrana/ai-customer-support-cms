@@ -4,7 +4,7 @@
   <header class="page-heading"><h1>Facebook Pages</h1></header>
 }
 
-<form class="fields" (submit)="$event.preventDefault(); applySearch()">
+<form class="fields cms-card" (submit)="$event.preventDefault(); applySearch()">
   <mat-form-field appearance="outline">
     <mat-label>Search by Page ID, Page name, or business</mat-label>
     <input matInput type="search" maxlength="255" [formControl]="search">
@@ -20,7 +20,7 @@
 } @else if (result(); as list) {
   @if (list.items.length) {
     <div class="table-scroll" tabindex="0" role="region" aria-label="Connected Facebook Pages">
-      <table>
+      <table class="cms-table">
         <thead><tr>
           <th scope="col">Business</th><th scope="col">Page Name</th><th scope="col">Page ID</th>
           <th scope="col">Status</th><th scope="col">Connected At</th>

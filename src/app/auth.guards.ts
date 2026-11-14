@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 
 import { AuthService } from './auth.service';
-import { LoginType } from './auth.models';
+import { canManageBusinessOperations, LoginType } from './auth.models';
 import { workspaceFor } from './workspaces';
 
 export function requireWorkspace(type: LoginType): CanActivateFn {
@@ -32,6 +32,14 @@ export const requireBusinessOwner: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   return auth.session()?.business?.role === 'owner' || router.createUrlTree(['/business-admin/dashboard'], {
+    queryParams: { notice: 'forbidden' },
+  });
+};
+
+export const requireBusinessOperations: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return canManageBusinessOperations(auth.session()?.business?.role) || router.createUrlTree(['/business-admin/dashboard'], {
     queryParams: { notice: 'forbidden' },
   });
 };

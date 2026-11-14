@@ -1,10 +1,10 @@
 <header class="page-heading heading-row">
-  <h1>{{ title }}</h1>
+  <div><h1>{{ title }}</h1><p>Manage the {{ title.toLowerCase() }} used in your product catalog.</p></div>
   <button mat-flat-button type="button" [disabled]="busy()" (click)="edit()">Add {{ label }}</button>
 </header>
 
 @if (editing() !== undefined) {
-  <form class="fields" (submit)="$event.preventDefault(); save()">
+  <form class="fields cms-card" (submit)="$event.preventDefault(); save()">
     <mat-form-field appearance="outline">
       <mat-label>{{ editing() ? 'Edit' : 'New' }} {{ label }} name</mat-label>
       <input matInput [formControl]="name" [readonly]="busy()">
@@ -16,9 +16,9 @@
     </div>
   </form>
 }
-@if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+@if (error()) { <p class="cms-feedback error" role="alert">{{ error() }}</p> }
 
-<form class="fields" (submit)="$event.preventDefault(); applySearch()">
+<form class="fields cms-card" (submit)="$event.preventDefault(); applySearch()">
   <mat-form-field appearance="outline">
     <mat-label>Search {{ title.toLowerCase() }}</mat-label>
     <input matInput [formControl]="search" maxlength="255">
@@ -27,22 +27,26 @@
 </form>
 
 @if (loading()) {
-  <p role="status">Loading {{ title.toLowerCase() }}…</p>
+  <p class="cms-state" role="status">Loading {{ title.toLowerCase() }}…</p>
 } @else if (loadError()) {
-  <p class="error" role="alert">{{ loadError() }}</p>
+  <p class="cms-feedback error" role="alert">{{ loadError() }}</p>
   <button mat-stroked-button type="button" (click)="load()">Retry</button>
 } @else if (result(); as list) {
+  <div class="cms-card"><div class="cms-table-scroll" tabindex="0" role="region" [attr.aria-label]="title">
+  <table class="cms-table"><thead><tr><th scope="col">Name</th><th scope="col">Actions</th></tr></thead><tbody>
   @for (item of list.items; track item.id) {
-    <article class="entry section-heading">
-      <span>{{ item.name }}</span>
-      <div>
+    <tr>
+      <td>{{ item.name }}</td>
+      <td class="cms-cell-actions">
         <button mat-button type="button" [disabled]="busy()" (click)="edit(item)" [attr.aria-label]="'Edit ' + item.name">Edit</button>
-        <button mat-button type="button" [disabled]="busy()" (click)="remove(item)" [attr.aria-label]="'Delete ' + item.name">Delete</button>
-      </div>
-    </article>
+        <button mat-button type="button" [disabled]="busy()" class="cms-destructive" (click)="remove(item)" [attr.aria-label]="'Delete ' + item.name">Delete</button>
+      </td>
+    </tr>
   } @empty {
-    <p>No {{ title.toLowerCase() }} found.</p>
+    <tr><td colspan="2">No {{ title.toLowerCase() }} found.</td></tr>
   }
+  </tbody></table></div>
   <mat-paginator [length]="list.total" [pageIndex]="list.page - 1" [pageSize]="list.pageSize"
     [pageSizeOptions]="[10, 20, 50]" (page)="paginate($event)" [attr.aria-label]="title + ' pages'" />
+  </div>
 }

@@ -1,3 +1,4 @@
+import { canManageBusinessOperations } from './auth.models';
 import { Component, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -16,7 +17,7 @@ import { Section, Workspace } from './workspaces';
     @if (workspace.loginType === 'business') { <app-business-facebook-pages /> }
     <nav class="section-grid" aria-label="Workspace sections">
       @for (section of workspace.sections; track section.path) {
-        @if (!section.hidden && (!section.ownerOnly || auth.session()?.business?.role === 'owner')) {
+        @if (!section.hidden && (!section.ownerOnly || auth.session()?.business?.role === 'owner') && (!section.operationsOnly || canManageOperations(auth.session()?.business?.role))) {
           <a class="section-link" [routerLink]="['..', section.path]">
             <mat-card appearance="outlined">
               <mat-card-content>
@@ -45,6 +46,7 @@ import { Section, Workspace } from './workspaces';
   `,
 })
 export class DashboardPage {
+  protected readonly canManageOperations = canManageBusinessOperations;
   protected readonly auth = inject(AuthService);
   protected readonly workspace: Workspace = inject(ActivatedRoute).snapshot.data['workspace'];
 }

@@ -18,6 +18,10 @@ export interface AuthBusiness {
   role: 'owner' | 'admin' | 'staff';
 }
 
+export function canManageBusinessOperations(role: AuthBusiness['role'] | undefined): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
 interface SessionDetails {
   user: AuthUser;
   csrfToken: string;

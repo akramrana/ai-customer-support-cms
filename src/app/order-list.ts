@@ -8,7 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { OrdersService, OrderStatus, OrderSummary, orderStatuses, orderStatusLabel } from './orders.service';
+import { OrdersService, OrderStatus, OrderSummary, orderStatuses, orderStatusLabel, shortOrderNumber } from './orders.service';
 
 @Component({
   imports: [DatePipe, RouterLink, MatButtonModule, MatFormFieldModule, MatPaginatorModule, MatProgressBarModule, MatSelectModule],
@@ -16,6 +16,7 @@ import { OrdersService, OrderStatus, OrderSummary, orderStatuses, orderStatusLab
   styleUrl: './orders.scss',
 })
 export class OrderListPage {
+  protected readonly shortNumber = shortOrderNumber;
   private readonly api = inject(OrdersService);
   private readonly destroyRef = inject(DestroyRef);
   private request?: Subscription;

@@ -1,18 +1,30 @@
 <section class="orders">
   <a mat-button routerLink="..">Back to orders</a>
   @if (loading()) { <mat-progress-bar mode="indeterminate" aria-label="Loading order" /> }
-  @if (error()) { <p role="alert">{{ error() }} <button mat-button type="button" (click)="load()">Refresh</button></p> }
-  @if (success()) { <p role="status">{{ success() }}</p> }
+  @if (error()) { <p class="cms-feedback error" role="alert">{{ error() }} <button mat-button type="button" (click)="load()">Refresh</button></p> }
+  @if (success()) { <p class="cms-state" role="status">{{ success() }}</p> }
   @if (order(); as current) {
-    <header class="heading">
-      <div><h1>{{ current.reference }}</h1><p>{{ label(current.status) }} · {{ current.createdAt | date:"medium" }}</p></div>
-      @if (current.status === "pending_confirmation" && session()?.business?.role === "owner") {
+    <header class="page-heading cms-heading">
+      <div><h1>Order #{{ shortNumber(current.reference) }}</h1><p><span class="cms-badge" [attr.data-status]="current.status">{{ label(current.status) }}</span> · {{ current.createdAt | date:"medium" }}</p></div>
+    </header>
+    <section class="cms-card cms-section" aria-label="Order actions">
+      <h2>Order actions</h2>
+      @if (!canManage()) {
+        <p>A business owner or admin can confirm and dispatch orders.</p>
+      } @else if (current.status === 'pending_confirmation') {
         <div class="actions">
-          <button mat-stroked-button type="button" [disabled]="saving() || loading()" (click)="review('cancel')">Cancel order</button>
+          <button mat-stroked-button type="button" [disabled]="saving() || loading()" class="cms-destructive" (click)="review('cancel')">Cancel order</button>
           <button mat-flat-button type="button" [disabled]="saving() || loading()" (click)="review('confirm')">Confirm order</button>
         </div>
+      } @else if (current.status === 'confirmed' && !current.dispatchedAt) {
+        <button mat-flat-button type="button" [disabled]="saving() || loading()" (click)="review('dispatch')">Dispatched &amp; Update Stock</button>
+      } @else {
+        <p>No actions are available for this status.</p>
       }
-    </header>
+    </section>
+    @if (current.source === 'manual') { <p>Manual order</p> }
+    @if (current.confirmedAt) { <p>Confirmed {{ current.confirmedAt | date:'medium' }}</p> }
+    <section class="cms-card cms-section">
     <h2>Customer and delivery</h2>
     <dl class="customer">
       <div><dt>Name</dt><dd>{{ current.customerName || "—" }}</dd></div>
@@ -21,14 +33,16 @@
       <div><dt>Delivery area</dt><dd>{{ current.region === "inside_dhaka" ? "Inside Dhaka" : current.region === "outside_dhaka" ? "Outside Dhaka" : "—" }}</dd></div>
       @if (current.extraRequest) { <div><dt>Extra request</dt><dd>{{ current.extraRequest }}</dd></div> }
     </dl>
+    </section>
+    <section class="cms-card cms-section">
     <h2>Items</h2>
-    <div class="table-scroll">
-      <table>
+    <div class="cms-table-scroll" tabindex="0" role="region" aria-label="Order items">
+      <table class="cms-table">
         <thead><tr><th>Product</th><th>Quantity</th><th>Unit price</th><th>Line total</th></tr></thead>
         <tbody>
           @for (item of current.items; track item.id) {
             <tr>
-              <td>{{ item.productName }} @if (item.variantName) { · {{ item.variantName }} } <small>{{ item.sku }}</small></td>
+              <td>{{ item.productName }} @if (item.variantName) { · {{ item.variantName }} }</td>
               <td>{{ item.requestedQuantity ?? item.packages }} {{ item.requestedUnit ?? "" }}
                 @if (item.requestedQuantity && item.packages !== null && item.requestedUnit !== "pack") { <small>{{ item.packages }} packages</small> }
               </td>
@@ -41,10 +55,12 @@
         </tbody>
       </table>
     </div>
+    <details class="cms-secondary"><summary>Internal reference</summary><p class="internal-reference">{{ current.reference }}</p></details>
     <dl class="totals">
       <div><dt>Subtotal</dt><dd>{{ current.subtotal }} {{ current.currency }}</dd></div>
       <div><dt>Delivery fee</dt><dd>{{ current.deliveryFee }} {{ current.currency }}</dd></div>
       <div><dt>Grand total</dt><dd>{{ current.total }} {{ current.currency }}</dd></div>
     </dl>
+    </section>
   }
 </section>

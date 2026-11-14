@@ -1,6 +1,6 @@
 import { Route, Routes } from '@angular/router';
 
-import { redirectSignedIn, requireBusinessOwner, requireWorkspace } from './auth.guards';
+import { redirectSignedIn, requireBusinessOperations, requireBusinessOwner, requireWorkspace } from './auth.guards';
 import { businessAdmin, superAdmin, Workspace } from './workspaces';
 
 const productEditor: Route = {
@@ -89,6 +89,14 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
             { path: 'gemini-key', title: 'Gemini API Key | Messenger Support',
               loadComponent: () => import('./gemini-key-settings').then(module => module.GeminiKeySettingsPage) },
           ] };
+        }
+        if (workspace.loginType === 'business' && section.path === 'inventory') {
+          return { path: section.path, title: 'Inventory | Messenger Support',
+            loadComponent: () => import('./inventory').then(module => module.InventoryManagementPage) };
+        }
+        if (workspace.loginType === 'business' && section.path === 'create-order') {
+          return { path: section.path, title: 'Create Order | Messenger Support', canActivate: [requireBusinessOperations],
+            loadComponent: () => import('./manual-order').then(module => module.ManualOrderPage) };
         }
         if (workspace.loginType === 'business' && section.path === 'orders') {
           return { path: 'orders', children: [

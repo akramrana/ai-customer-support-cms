@@ -11,7 +11,7 @@
   <button mat-stroked-button type="button" (click)="reload()">Retry</button>
 } @else {
   <form class="editor" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="saving()">
-    <mat-card appearance="outlined">
+    <mat-card class="cms-card cms-material-card" appearance="outlined">
       <mat-card-content>
         <h2>Product details</h2>
         <div class="fields">
@@ -63,7 +63,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card appearance="outlined">
+    <mat-card class="cms-card cms-material-card" appearance="outlined">
       <mat-card-content formArrayName="variants">
         <div class="section-heading">
           <h2>Variants</h2>
@@ -94,8 +94,8 @@
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Stock (selling units)</mat-label>
-                <input matInput formControlName="stockQty" type="number" step="1" min="0" required>
-                <mat-hint>Whole units of the configured measure</mat-hint>
+                <input matInput formControlName="stockQty" type="number" step="1" min="0" [readonly]="!!variant.controls.id.value" required>
+                <mat-hint>{{ variant.controls.id.value ? 'Adjust existing stock in Inventory' : 'Whole units of the configured measure' }}</mat-hint>
                 <mat-error>Enter a whole number from 0 to 4,294,967,295.</mat-error>
               </mat-form-field>
               <mat-form-field appearance="outline">
@@ -132,7 +132,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card appearance="outlined">
+    <mat-card class="cms-card cms-material-card" appearance="outlined">
       <mat-card-content formArrayName="images">
         <div class="section-heading">
           <h2>Images</h2>

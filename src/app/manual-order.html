@@ -1,0 +1,68 @@
+<section class="orders commerce-page">
+  <header class="commerce-header">
+  <a mat-button routerLink="/business-admin/orders">Back to orders</a>
+  <h1>Create Manual Order</h1>
+  </header>
+  @if (loading()) { <p class="cms-state" role="status">Loading delivery charges…</p> }
+  @if (error()) { <p class="cms-feedback error" role="alert">{{ error() }}</p> }
+  @if (!settings() && !loading()) {
+    <button mat-stroked-button type="button" (click)="loadSettings()">Retry delivery settings</button>
+  }
+  <form class="manual-layout" [formGroup]="form" (ngSubmit)="save()">
+    <div class="manual-main">
+      <section class="cms-card">
+        <h2>Products</h2>
+        <div class="product-entry">
+  <app-variant-picker [activeOnly]="true" [currency]="settings()?.currency ?? ''" (selected)="choice.set($event)" />
+  <div class="commerce-fields product-quantity">
+    <label>Quantity <input type="number" min="1" step="1" [formControl]="quantity"></label>
+    <button mat-stroked-button type="button" [disabled]="!choice() || saving()" (click)="add()">Add Product</button>
+  </div>
+        </div>
+  @if (items().length) {
+    <div class="table-scroll commerce-table"><table>
+      <thead><tr><th>Product</th><th>Variant / size</th><th>Unit price</th><th>Quantity</th><th>Line total</th><th>Action</th></tr></thead>
+      <tbody>
+        @for (item of items(); track item.variant.id) {
+          <tr>
+            <td><strong>{{ item.product.name }}</strong></td>
+            <td>{{ item.variant.variantName || item.variant.sku }} <small>{{ item.variant.measurementValue }} {{ item.variant.measurementUnit }}</small></td>
+            <td class="money-cell">{{ item.variant.price }} {{ settings()?.currency }}</td>
+            <td><input type="number" min="1" step="1" [value]="item.quantity" [disabled]="saving()"
+              [attr.aria-label]="'Quantity for ' + item.variant.sku" (input)="setQuantity(item.variant.id, $any($event.target).valueAsNumber)"></td>
+            <td class="money-cell">{{ item.quantity * +item.variant.price | number:'1.2-2' }} {{ settings()?.currency }}</td>
+            <td><button mat-button type="button" [disabled]="saving()" (click)="remove(item.variant.id)">Remove</button></td>
+          </tr>
+        }
+      </tbody>
+    </table></div>
+  } @else { <p class="commerce-empty">Search for a variant and add it to start the order.</p> }
+      </section>
+      <section class="cms-card">
+    <h2>Customer and delivery</h2>
+    <div class="commerce-fields customer-fields">
+      <label>Customer name <input formControlName="customerName" required maxlength="80"></label>
+      <label>Phone <input type="tel" formControlName="phone" required maxlength="40"></label>
+      <label class="address-field">Address <textarea formControlName="address" required maxlength="350"></textarea></label>
+      <label>Delivery area <select formControlName="zone">
+        <option value="inside">Inside Dhaka</option><option value="outside">Outside Dhaka</option>
+      </select></label>
+    </div>
+      </section>
+    </div>
+    <aside class="cms-card order-summary" aria-label="Order summary">
+      <h2>Order summary</h2>
+    @if (!items().length) { <p class="commerce-empty">Add a product to see the order total.</p> }
+    @if (settings(); as current) {
+      @if (items().length) {
+      <dl class="totals">
+        <div><dt>Subtotal</dt><dd>{{ subtotal() / 100 | number:'1.2-2' }} {{ current.currency }}</dd></div>
+        <div><dt>Delivery charge</dt><dd>{{ delivery() / 100 | number:'1.2-2' }} {{ current.currency }}</dd></div>
+        <div><dt>Grand total</dt><dd>{{ (subtotal() + delivery()) / 100 | number:'1.2-2' }} {{ current.currency }}</dd></div>
+      </dl>
+      }
+    }
+    <button mat-flat-button class="commerce-primary" type="submit" [disabled]="saving() || !settings() || !items().length">{{ saving() ? 'Saving…' : 'Save order' }}</button>
+    </aside>
+  </form>
+</section>

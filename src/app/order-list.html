@@ -1,8 +1,9 @@
 <section class="orders">
-  <header class="heading">
+  <header class="page-heading cms-heading">
     <div><h1>Orders</h1><p>Awaiting review: {{ pending() ?? "Unavailable" }}</p></div>
     <button mat-stroked-button type="button" (click)="refresh()">Refresh</button>
   </header>
+  <section class="cms-card">
   <mat-form-field appearance="outline">
     <mat-label>Status</mat-label>
     <mat-select [value]="status" (selectionChange)="filter($event.value)">
@@ -13,19 +14,19 @@
     </mat-select>
   </mat-form-field>
   @if (loading()) { <mat-progress-bar mode="indeterminate" aria-label="Loading orders" /> }
-  @if (error()) { <p role="alert">{{ error() }}</p> }
+  @if (error()) { <p class="cms-feedback error" role="alert">{{ error() }}</p> }
   @if (!loading() && !error() && !orders().length) { <p>No orders match this filter.</p> }
   @if (orders().length) {
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Reference</th><th>Customer</th><th>Phone</th><th>Total</th><th>Date</th><th>Status</th></tr></thead>
+    <div class="cms-table-scroll" tabindex="0" role="region" aria-label="Orders">
+      <table class="cms-table">
+        <thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>Total</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
           @for (order of orders(); track order.id) {
             <tr>
-              <td><a [routerLink]="[order.id]">{{ order.reference }}</a></td>
+              <td><a [routerLink]="[order.id]">Order #{{ shortNumber(order.reference) }}</a></td>
               <td>{{ order.customerName || "—" }}</td><td>{{ order.phone || "—" }}</td>
               <td>{{ order.total }} {{ order.currency }}</td><td>{{ order.createdAt | date:"medium" }}</td>
-              <td><span class="status">{{ label(order.status) }}</span></td>
+              <td><span class="cms-badge" [attr.data-status]="order.status">{{ label(order.status) }}</span></td>
             </tr>
           }
         </tbody>
@@ -34,4 +35,5 @@
   }
   <mat-paginator aria-label="Order pages" [length]="total()" [pageIndex]="page" [pageSize]="pageSize"
     [pageSizeOptions]="[10, 20, 50]" [disabled]="loading()" (page)="paginate($event)" />
+  </section>
 </section>
