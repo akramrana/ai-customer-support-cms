@@ -30,7 +30,22 @@
         <div class="actions">
           @if (current.keyConfigured) { <mat-slide-toggle formControlName="clearKey">Clear saved API key</mat-slide-toggle> }
           <button mat-flat-button type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save Settings' }}</button>
+          <button mat-stroked-button type="button" (click)="sendTest()"
+            [disabled]="busy() || testing() || !!testUnavailable()" [attr.aria-describedby]="testUnavailable() ? 'test-email-hint' : null">
+            <span class="test-label">
+              @if (testing()) { <mat-spinner diameter="16" aria-hidden="true" /> }
+              {{ testing() ? 'Sending…' : 'Send Test Email' }}
+            </span>
+          </button>
         </div>
+        @if (testUnavailable(); as reason) { <p id="test-email-hint">{{ reason }}</p> }
+        @if (testResult(); as result) {
+          <p class="cms-feedback success" role="status">
+            Test email accepted by Resend at {{ result.acceptedAt | date:'medium' }}.
+            @if (result.messageId) { <br>Resend message ID: {{ result.messageId }} }
+          </p>
+        }
+        @if (testError()) { <p class="cms-feedback error" role="alert">Test email failed: {{ testError() }}</p> }
       </form>
     } @else if (!busy()) {
       <button mat-stroked-button type="button" (click)="load()">Retry</button>

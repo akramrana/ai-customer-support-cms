@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -6,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 interface EmailSettings {
@@ -18,13 +20,14 @@ interface EmailSettings {
 
 @Component({
   selector: 'app-order-email-settings',
-  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatSlideToggleModule],
+  imports: [DatePipe, MatProgressSpinnerModule, ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatSlideToggleModule],
   templateUrl: './order-email-settings.html',
   styles: [`
     :host { display: block; margin-block: 1rem; }
     mat-card-content { padding: clamp(1rem, 3vw, 1.5rem); }
     .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .5rem 1rem; }
-    .actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+    .test-label { display: inline-flex; gap: .5rem; align-items: center; }
   `],
 })
 export class OrderEmailSettings {
@@ -35,6 +38,9 @@ export class OrderEmailSettings {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal(false);
+  protected readonly testing = signal(false);
+  protected readonly testResult = signal<{ acceptedAt: string; messageId?: string } | null>(null);
+  protected readonly testError = signal('');
   protected readonly form = inject(FormBuilder).nonNullable.group({
     enabled: false,
     senderEmail: ['', [Validators.email, Validators.maxLength(254)]],
@@ -78,6 +84,34 @@ export class OrderEmailSettings {
         this.busy.set(false);
       },
     });
+  }
+
+  protected testUnavailable(): string {
+    const saved = this.settings();
+    const form = this.form.getRawValue();
+    if (!saved) return 'Load your email settings first.';
+    if (form.apiKey || form.clearKey || form.enabled !== saved.enabled || form.senderName !== saved.senderName
+      || form.senderEmail !== saved.senderEmail || form.recipientEmail !== saved.recipientEmail) {
+      return 'Save your changes before sending a test email.';
+    }
+    if (!saved.keyConfigured) return 'Save a Resend API key before sending a test email.';
+    if (!saved.senderEmail || !saved.recipientEmail) return 'Save a sender and recipient address before sending a test email.';
+    return '';
+  }
+
+  protected sendTest(): void {
+    if (this.testing() || this.busy() || this.testUnavailable()) return;
+    this.testing.set(true);
+    this.testError.set('');
+    this.testResult.set(null);
+    this.http.post<{ acceptedAt: string; messageId?: string }>(this.url + '/test', null)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: result => { this.testResult.set(result); this.testing.set(false); },
+        error: error => {
+          this.testError.set(error.error?.error || 'Could not confirm acceptance. Try again later.');
+          this.testing.set(false);
+        },
+      });
   }
 
   private show(settings: EmailSettings): void {
