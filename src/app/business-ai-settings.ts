@@ -15,6 +15,7 @@ import { AiMode, AiSchedule, BusinessAiSettingsService } from './business-ai-set
 
 import { RouterLink } from '@angular/router';
 import { AuthService } from './auth.service';
+import { OrderEmailSettings } from './order-email-settings';
 import { DeliverySettingsSection } from './delivery-settings';
 
 const defaultTimezone = 'Asia/Dhaka';
@@ -44,7 +45,7 @@ function errorDetail(error: unknown): string {
 @Component({
   imports: [
     ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule,
-    MatProgressBarModule, MatRadioModule, MatSlideToggleModule, DeliverySettingsSection, RouterLink,
+    MatProgressBarModule, MatRadioModule, MatSlideToggleModule, DeliverySettingsSection, OrderEmailSettings, RouterLink,
   ],
   templateUrl: './business-ai-settings.html',
   styleUrl: './business-ai-settings.scss',

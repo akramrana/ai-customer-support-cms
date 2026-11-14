@@ -3,6 +3,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -16,7 +17,7 @@ import { Workspace } from './workspaces';
 @Component({
   selector: 'app-workspace-layout',
   imports: [
-    MatButtonModule, MatListModule, MatSidenavModule, MatToolbarModule,
+    MatButtonModule, MatMenuModule, MatListModule, MatSidenavModule, MatToolbarModule,
     RouterLink, RouterLinkActive, RouterOutlet,
   ],
   templateUrl: './workspace-layout.html',

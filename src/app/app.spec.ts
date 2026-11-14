@@ -73,6 +73,9 @@ function chatPage<T>(items: T[], page: number, total: number) {
   return { items, page, pageSize: 20, total };
 }
 
+const emailNotificationUrl = '/api/business/email-notifications';
+const emailNotificationFixture = { enabled: false, keyConfigured: true, senderEmail: '', senderName: '', recipientEmail: '' };
+
 const deliveryUrl = '/api/business/delivery-settings';
 const deliveryFixture = {
   currency: 'BDT', insideDhakaFee: '50.00', outsideDhakaFee: '100.00',
@@ -200,6 +203,7 @@ describe('CMS authentication', () => {
   it('creates one manual order with multiple editable variant rows and the configured delivery fee', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/create-order');
+    http.match(emailNotificationUrl).forEach(request => request.flush(emailNotificationFixture));
     http.expectOne(deliveryUrl).flush(deliveryFixture);
     harness.detectChanges();
     const page = harness.routeNativeElement!;
@@ -536,6 +540,45 @@ describe('CMS authentication', () => {
       .toContain('permission');
   });
 
+
+  it('updates My Account and refreshes the profile menu and CSRF token', async () => {
+    await restore(businessSession);
+    const harness = await RouterTestingHarness.create('/business-admin/dashboard');
+    harness.routeNativeElement!.querySelector<HTMLButtonElement>('[aria-label="Profile menu"]')!.click();
+    harness.detectChanges();
+    expect(document.querySelector('[role="menuitem"]')?.textContent).toContain('My Account');
+    await harness.navigateByUrl('/business-admin/my-account');
+    http.expectOne('/api/auth/me').flush(businessSession);
+    harness.detectChanges();
+    const page = harness.routeNativeElement!;
+    const fill = (control: string, value: string) => {
+      const input = page.querySelector<HTMLInputElement>('#account-' + control)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    fill('name', 'Updated Profile');
+    page.querySelectorAll('form')[0].dispatchEvent(new Event('submit', { cancelable: true }));
+    const patch = http.expectOne({ method: 'PATCH', url: '/api/auth/me' });
+    expect(patch.request.body.name).toBe('Updated Profile');
+    const user = { ...businessSession.user, name: 'Updated Profile' };
+    patch.flush(user);
+    harness.detectChanges();
+    expect(page.querySelector('[aria-label="Profile menu"]')?.textContent).toContain('Updated Profile');
+    fill('currentPassword', 'old fixture password');
+    fill('newPassword', 'new fixture password');
+    fill('confirmPassword', 'mismatch');
+    page.querySelectorAll('form')[1].dispatchEvent(new Event('submit', { cancelable: true }));
+    http.expectNone('/api/auth/me/change-password');
+    fill('confirmPassword', 'new fixture password');
+    page.querySelectorAll('form')[1].dispatchEvent(new Event('submit', { cancelable: true }));
+    const change = http.expectOne({ method: 'POST', url: '/api/auth/me/change-password' });
+    expect(change.request.headers.get('X-CSRF-Token')).toBe(businessSession.csrfToken);
+    change.flush({ ...businessSession, user, csrfToken: 'rotated-token' });
+    harness.detectChanges();
+    expect(auth.session()?.csrfToken).toBe('rotated-token');
+    expect(page.querySelector<HTMLInputElement>('#account-newPassword')?.value).toBe('');
+  });
+
   it('sends the CSRF token on authenticated writes, including sign-out', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/dashboard');
@@ -603,6 +646,7 @@ describe('CMS authentication', () => {
   it('loads both AI resources and saves mode changes without writing or clearing schedules', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.match(emailNotificationUrl).forEach(request => request.flush(emailNotificationFixture));
     http.expectOne(deliveryUrl).flush(deliveryFixture);
     const page = harness.routeNativeElement!;
     expect(page.textContent).toContain('Loading AI settings');
@@ -643,6 +687,7 @@ describe('CMS authentication', () => {
   it('validates intervals and keeps the schedule draft after a separate save fails', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.match(emailNotificationUrl).forEach(request => request.flush(emailNotificationFixture));
     http.expectOne(deliveryUrl).flush(deliveryFixture);
     const page = harness.routeNativeElement!;
     http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'UTC' });
@@ -712,6 +757,7 @@ describe('CMS authentication', () => {
   it('keeps write controls hidden when the initial schedule load fails', async () => {
     await restore(businessSession);
     const harness = await RouterTestingHarness.create('/business-admin/ai-settings');
+    http.match(emailNotificationUrl).forEach(request => request.flush(emailNotificationFixture));
     http.expectOne(deliveryUrl).flush(deliveryFixture);
     http.expectOne('/api/business/settings').flush({ aiMode: 'scheduled', timezone: 'Asia/Dhaka' });
     http.expectOne('/api/business/ai-schedules').flush({ error: 'Unavailable' }, {
@@ -719,7 +765,7 @@ describe('CMS authentication', () => {
     });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Unable to load AI settings and schedules.');
-    expect(harness.routeNativeElement?.querySelector('form:not([aria-labelledby=delivery-settings-heading])')).toBeNull();
+    expect(harness.routeNativeElement?.querySelector('form:not([aria-labelledby=delivery-settings-heading]):not([aria-labelledby=order-email-heading])')).toBeNull();
   });
 
   it('lists products, loads variant counts, paginates, and debounces name search', async () => {
@@ -1064,6 +1110,7 @@ describe('CMS authentication', () => {
     expect(delivery.textContent).toContain('Loading delivery settings');
     http.expectOne('/api/business/settings').flush({ aiMode: 'off', timezone: 'Asia/Dhaka' });
     http.expectOne('/api/business/ai-schedules').flush({ schedules: [] });
+    http.expectOne(emailNotificationUrl).flush(emailNotificationFixture);
     const load = http.expectOne(deliveryUrl);
     expect(load.request.withCredentials).toBeTrue();
     load.flush(deliveryFixture);

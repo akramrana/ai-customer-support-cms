@@ -19,6 +19,8 @@ function workspaceRoutes(workspace: Workspace, otherWorkspace: Workspace): Route
     loadComponent: () => import('./workspace-layout').then((module) => module.WorkspaceLayout),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'my-account', title: 'My Account | Messenger Support',
+        loadComponent: () => import('./my-account').then(module => module.MyAccountPage) },
       {
         path: 'dashboard',
         title: `${workspace.label} Dashboard | Messenger Support`,

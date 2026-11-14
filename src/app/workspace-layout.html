@@ -26,6 +26,10 @@
           [attr.aria-expanded]="sidebar.opened" (click)="sidebar.toggle()">Menu</button>
       }
       <span class="account-label">{{ auth.session()?.business?.name ?? auth.session()?.user?.name }}</span>
+      <button mat-button class="profile-trigger" type="button" aria-label="Profile menu" [matMenuTriggerFor]="profileMenu">
+        {{ auth.session()?.user?.name || 'Account' }}
+      </button>
+      <mat-menu #profileMenu="matMenu"><a mat-menu-item routerLink="my-account">My Account</a></mat-menu>
       <button class="sign-out" mat-button type="button" [disabled]="signingOut()" (click)="signOut()">
         {{ signingOut() ? 'Signing out…' : 'Sign out' }}
       </button>

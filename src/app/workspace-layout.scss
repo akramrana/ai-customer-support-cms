@@ -35,7 +35,8 @@
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 
-  .sign-out { margin-left: auto; flex-shrink: 0; }
+  .profile-trigger { margin-left: auto; max-width: min(35vw, 14rem); overflow: hidden; text-overflow: ellipsis; }
+  .sign-out { flex-shrink: 0; }
 }
 
 .account-label {
